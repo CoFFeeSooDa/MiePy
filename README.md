@@ -13,6 +13,14 @@ Construct a class including attributes of:
 5. Purcell factor
 6.  ... feel free to add desired features (wish pool)
 
+## Log
+
+2023/09/07: Ming-Wei initialized a debug tool in the class MiePy. If one needs to output debugging logs, please use the following normative command
+```python
+self._log.info('It is a info text')    # for the level of info
+self._log.debug('It is a debug text')  # for the level of debugging
+```
+
 ---------------------------------(just a template, please ignore it)------------------------------------------
 
 This repository contains:
