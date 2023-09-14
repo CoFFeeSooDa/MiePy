@@ -21,6 +21,26 @@ self._log.info('It is a info text')    # for the level of info
 self._log.debug('It is a debug text')  # for the level of debugging
 ```
 
+2023/09/11: Hung-Sheng Tsai constructed the code to transform between spherical coordinates. Please use the following code to use it
+```python
+import Fn_spherical_to_spherical as Fn_S2S
+spherical_2 = Fn_S2S.spherical_to_spherical(**kwargs)
+```
+
+2023/09/14: Hung-Sheng Tsai constructed the code to transform between cartesian coordinate and spherical coordinate. Please use the following code to use it
+```python
+import Fn_cartesian_to_spherical as Fn_C2S
+spherical_coord = Fn_C2S.cartesian_to_spherical(**kwargs)
+```
+Note: Some common used constants are included in constant.py. To see or modify the .py file, please use the following command
+```
+git checkout basis_and_coord
+```
+To use the constant variables in your python script, please use the following code
+```python
+from constant import *
+```
+
 ---------------------------------(just a template, please ignore it)------------------------------------------
 
 This repository contains:
