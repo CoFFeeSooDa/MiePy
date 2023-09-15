@@ -6,9 +6,12 @@ import json
 # External imports:
 import numpy as np
 
+# My functions
+import functions.coordinate_transformation as ct
+
 
 # Main class to compute properties of Mie scattering 
-class MiePy():
+class MiePy(object):
     def __init__(self,input_path='./input_json/Demo_AngleMode_CF.json',debug_folder=None,output_debug_file=False):
         # Logger setup
         self._output_debug_file = output_debug_file
@@ -65,33 +68,28 @@ class MiePy():
             print(f'{self.settings = }')
     
     
-    #output example
+    #test block
     def test(self):
         self._log.info('It is a info text')
         self._log.debug('It is a debug text')
+        self.DPos = Position([2,2,0],type='cartesian',log_message=self._log)
+        print(f'{self.DPos.cartesian=}')
+        print(f'{self.DPos.spherical=}')
+        ct.spherical_to_spherical([3,0,1.57],1,0,self._log)
 
 # A class to calculate the position vectors in Cartesian/spherical coordinates
 # type = 'cartesian' or 'spherical'
 class Position(object):
-    def __init__(self,position_vector: list,type='cartesian') -> None:
+    def __init__(self,position_vector: list,type='cartesian',log_message=None) -> None:
         if type == 'cartesian':
             self.cartesian = np.array(position_vector,dtype=np.float64)
             # From Cartesian coordinates to spherical coordinates
-            def c2s(cartesian_vector):
-                r = np.linalg.norm(cartesian_vector)
-                theta = np.arccos(cartesian_vector[2]/r)
-                phi = np.arctan2(cartesian_vector[1],cartesian_vector[0])
-                return np.array([r,theta,phi],dtype=np.float64)
-            self.spherical = c2s(self.cartesian)
+            self.spherical = ct.cartesian_to_spherical(self.cartesian,log_message)
         elif type == 'spherical':
             self.spherical = np.array(position_vector)
             # From spherical coordinates to Cartesian coordinates
-            def s2c(spherical_vector):
-                x = spherical_vector[0] * np.sin(spherical_vector[1]) * np.cos(spherical_vector[2])
-                y = spherical_vector[0] * np.sin(spherical_vector[1]) * np.sin(spherical_vector[2])
-                z = spherical_vector[0] * np.cos(spherical_vector[1])
-                return np.array([x,y,z],dtype=np.float64)
-            self.cartesian = s2c(self.spherical)
+            self.cartesian = ct.spherical_to_cartesian(self.spherical,log_message)
+
 
 #A class to calculate the orientation of a dipole in Cartesian/spherical coordinates
 # type = 'cartesian' or 'spherical'
@@ -104,8 +102,6 @@ class Orientation(object):
 
 if __name__ == '__main__':
     #MP = MiePy('./input_json/Demo_AngleMode_CF.json')
-    #MP = MiePy()
-    #MP.read_json()
-    pos = Position([1,np.pi,0],type='spherical')
-    print(f'{pos.cartesian=}')
-    print(f'{pos.spherical=}')
+    MP = MiePy()
+    MP.test()
+    
