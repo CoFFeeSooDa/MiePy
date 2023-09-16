@@ -15,6 +15,8 @@ Construct a class including attributes of:
 
 ## Log
 
+2023/09/16: Ming-Wei complete the radial basis functions. Now attempts to establish a class for radial functions.
+
 ### 2023/09/16: IMPORTANT NOTE - BY Ming-Wei
 
 I have finished the issue of logging problem. To keep the consistency, please follow the rules below:
