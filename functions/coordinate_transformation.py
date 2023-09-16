@@ -10,7 +10,7 @@ def cartesian_to_spherical(cartesian_coord: np.ndarray, log_message=None) -> np.
 
     Args:
         cartesian_coord (ndarray[float] (3x1)): Cartesian coordinate components (x, y, z)
-        log_message: object of logging standard module (for the use of MiePy logging only)
+        log_message (object): object of logging standard module (for the use of MiePy logging only)
 
     Returns:
         spherical_coord (ndarray[float] (3x1)): spherical coordinate components (r, theta, phi)
@@ -37,7 +37,7 @@ def spherical_to_cartesian(spherical_coord: np.ndarray, log_message=None) -> np.
 
     Args:
         spherical_coord (ndarray[float] (3x1)): spherical coordinate components (r, theta, phi)
-        log_message: object of logging standard module (for the use of MiePy logging only)
+        log_message (object): object of logging standard module (for the use of MiePy logging only)
 
     Returns:
         cartesian_coord (ndarray[float] (3x1)): Cartesian coordinate components (x, y, z)
@@ -60,6 +60,7 @@ def spherical_to_spherical(spherical_2: np.ndarray,
         spherical_2 (ndarray[float] (3x1)): secondary spherical coordinate
         spherical_1_theta (float): theta in the S1 coordinate
         spherical_1_phi (float): phi in the S1 coordinate
+        log_message (object): object of logging standard module (for the use of MiePy logging only)
 
     Returns:
         spherical_1 (ndarray[float] (3x1)): primary spherical coordinate
