@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import linalg as LA
 
 def _envj(z: np.complex128, n: np.int16, log_message=None) -> float:
     """_envj
@@ -117,7 +118,7 @@ def spherical_bessel_function(z: np.complex128, n: np.int16, log_message=None) -
     if a0 < 1e-60:
         j_complex = np.zeros([n+1,1], dtype=np.complex128)
         y_complex = np.ones([n+1,1], dtype=np.complex128) * (-1e300)
-        if log_message is not None:
+        if log_message:
             log_message.warning('Reduced accuracy of spherical Neumann functions!')
         y_complex[0] = 1e0
         return j_complex, y_complex
@@ -126,8 +127,11 @@ def spherical_bessel_function(z: np.complex128, n: np.int16, log_message=None) -
     j_complex = np.zeros([n+1,1], dtype=np.complex128)
     # Zeroth-order spherical Bessel function
     j0 = np.sin(z)/z
+    j_complex[0] = j0
     # First-order spherical Bessel function
-    j1 = (j_complex[0] - np.cos(z)) / z
+    if n != 0:
+        j1 = (j_complex[0] - np.cos(z)) / z
+        j_complex[1] = j1
     # Compute spherical Bessel functions of order >= 2
     if n >= 2:
         # Set the starting order for the backward recursive computations
@@ -152,7 +156,8 @@ def spherical_bessel_function(z: np.complex128, n: np.int16, log_message=None) -
         else:
             cs = j1/cf0
         # Fill in the results of spherical Bessel functions
-        for kk in range(np.min([nm,n]) + 1):
+        print(f'{nm=}')
+        for kk in range(2,np.min([nm,n]) + 1):
             j_complex[kk] = cs * j_complex[kk]
     
     # Initialize the array of spherical Neumann functions
@@ -160,13 +165,15 @@ def spherical_bessel_function(z: np.complex128, n: np.int16, log_message=None) -
     # Zeroth-order spherical Neumann function
     y_complex[0] = -np.cos(z) / z
     # First-order spherical Neumann function
-    y_complex[1] = (y_complex[0] - np.sin(z)) / z
+    if n != 0:
+        y_complex[1] = (y_complex[0] - np.sin(z)) / z
     # Fill in the results of spherical Bessel functions
-    for kk in range(2, min(nm, n) + 1):
-        if abs(j_complex[kk-1]) >= abs(j_complex[kk-2]):
-            y_complex[kk] = (j_complex[kk] * y_complex[kk - 1] - 1.0 / z**2) / j_complex[kk - 1]
-        else:
-            y_complex[kk] = (j_complex[kk] * y_complex[kk - 2] - (2.0 * kk - 1.0) / z**3) / j_complex[kk - 2]
+    if n >= 2:
+        for kk in range(2, min(nm, n) + 1):
+            if abs(j_complex[kk-1]) >= abs(j_complex[kk-2]):
+                y_complex[kk] = (j_complex[kk] * y_complex[kk - 1] - 1.0 / z**2) / j_complex[kk - 1]
+            else:
+                y_complex[kk] = (j_complex[kk] * y_complex[kk - 2] - (2.0 * kk - 1.0) / z**3) / j_complex[kk - 2]
 
 
     return j_complex, y_complex
@@ -203,7 +210,8 @@ def riccati_bessel_function_S(z: np.complex128, n: np.int16, log_message=None) -
         S_complex1 =  S_complex0 / z - np.cos(z)
         
         S_complex[0] = S_complex0
-        S_complex[1] = S_complex1
+        if n != 0:
+            S_complex[1] = S_complex1
 
         if n >= 2:
             M = _msta1(z,200)
@@ -229,10 +237,11 @@ def riccati_bessel_function_S(z: np.complex128, n: np.int16, log_message=None) -
                 S_complex[jj] = CS * S_complex[jj]
         
         S_derivative_complex[0] = np.cos(z)
-        S_derivative_complex[1] = -S_complex1/z + S_complex0
-
-        for jj in range(2,nm+1):
-            S_derivative_complex[jj] = -jj*S_complex[jj]/z + S_complex[jj-1]
+        if n != 0:
+            S_derivative_complex[1] = -S_complex1/z + S_complex0
+        if n >= 2:
+            for jj in range(2,nm+1):
+                S_derivative_complex[jj] = -jj*S_complex[jj]/z + S_complex[jj-1]
         
         return S_complex, S_derivative_complex
     
@@ -260,7 +269,7 @@ def riccati_bessel_function_C(z: np.complex128, n: np.int16, log_message=None) -
 
     nm = n
     if np.abs(z) < 1e-60:
-        if log_message is not None:
+        if log_message:
             log_message.warning('Reduced accuracy of Riccati-Bessel C functions!')
         C_complex = np.full([n+1,1],-1.0e300, dtype=np.complex128)
         C_derivative_complex = np.full([n+1,1],1.0e300, dtype=np.complex128)
@@ -273,26 +282,31 @@ def riccati_bessel_function_C(z: np.complex128, n: np.int16, log_message=None) -
         C_complex1 =  C_complex0 / z - np.sin(z)
 
         C_complex[0] = C_complex0
-        C_complex[1] = C_complex1
+        if n != 0:
+            C_complex[1] = C_complex1
 
         tmp0 = C_complex0
         tmp1 = C_complex1
 
-        for jj in range(2,n+1):
-            tmp2 = (2.0 * jj - 1.0) * tmp1/z - tmp0
-            if np.abs(tmp2) > 1e300:
+        if n >= 2:
+            for jj in range(2,n+1):
+                tmp2 = (2.0 * jj - 1.0) * tmp1/z - tmp0
+                if np.abs(tmp2) > 1e300:
+                    max_ind = jj
+                    continue
+                C_complex[jj] = tmp2
+                tmp0 = tmp1
+                tmp1 = tmp2
                 max_ind = jj
-                continue
-            C_complex[jj] = tmp2
-            tmp0 = tmp1
-            tmp1 = tmp2
-            max_ind = jj
 
         # Calculate and fill in data in C_derivative_complex
         C_derivative_complex[0] = np.sin(z)
-        C_derivative_complex[1] = -C_complex1/z + C_complex0
-        for jj in range(2,max_ind+1):
-            C_derivative_complex[jj] = -jj*C_complex[jj]/z + C_complex[jj-1]
+        if n != 0:
+            C_derivative_complex[1] = -C_complex1/z + C_complex0
+
+        if n >= 2:
+            for jj in range(2,max_ind+1):
+                C_derivative_complex[jj] = -jj*C_complex[jj]/z + C_complex[jj-1]
         
         return C_complex, C_derivative_complex
 
@@ -316,10 +330,14 @@ def logarithmic_derivative_riccati_bessel_function_S(z: np.complex128, n: np.int
     # From experience
     nex = (n + np.floor(np.abs(1.0478 * z + 18.692))).astype(np.int16)
     DS_complex = np.zeros([nex+1,1],dtype=np.complex128)
-    for jj in range(nex,1,-1):
-        DS_complex[jj-1] = jj/z - 1/(jj/z + DS_complex[jj])
+    
+    if n >= 2:
+        for jj in range(nex,1,-1):
+            DS_complex[jj-1] = jj/z - 1/(jj/z + DS_complex[jj])
 
-    DS_complex[1] = (z**2 * np.tan(z) + z - np.tan(z)) / (-z**2 + z*np.tan(z))
+    if n != 0:
+        DS_complex[1] = (z**2 * np.tan(z) + z - np.tan(z)) / (-z**2 + z*np.tan(z))
+
     DS_complex[0] = 1 / np.tan(z)
     
     return DS_complex[:n+1]
@@ -343,22 +361,124 @@ def logarithmic_derivative_riccati_bessel_function_xi(z: np.complex128, n: np.in
     """
     Dxi_complex = np.zeros([n+1,1],dtype=np.complex128)
     Dxi_complex[0] = 1j
-    Dxi_complex[1] = (1j * z**2 - z - 1j) / (z**2 + 1j*z)
-    for jj in range(2,n+1):
-        Dxi_complex[jj] = -jj/z + 1/(jj/z - Dxi_complex[jj-1])
+    if n != 0:
+        Dxi_complex[1] = (1j * z**2 - z - 1j) / (z**2 + 1j*z)
+
+    if n >= 2:
+        for jj in range(2,n+1):
+            Dxi_complex[jj] = -jj/z + 1/(jj/z - Dxi_complex[jj-1])
     
     return Dxi_complex
             
+def wigner_d(theta: np.float64, j: np.int16, log_message=None) -> np.ndarray:
+    """Wigner_d
+
+    Args:
+        j (int): j-dimension SO(3) irreducible representation
+        theta (float): Polar angle (rad)
+        log_message (object): object of logging standard module (for the use of MiePy logging only)
         
+    Returns:
+        d (ndarray[float], (2j+1)x(2j+1)): Wigner d matrix
+
+    Reference:
+        Phys. Rev. E, 92, 043307 (2015)
+    """
+    ## Calculation of J+ ##
+    m = np.arange(-j, j)
+    J = np.diag(np.sqrt((j-m)*(j+m+1)), k=-1)
+
+    ## Create the Spectral Decomposition Matrix J_y at z Representation ##
+    Jy = ((J-J.T.conj())/2j).astype(np.complex128)
+    
+    ## Diagonalization ##
+    D,V = LA.eigh(Jy)
+    # Unitary Transformation
+    d = V @ np.diag(np.exp(-1j*theta*D)) @ V.T.conj()
+
+    ## Check the Quality of the Transformation ##
+    if np.max(np.abs(np.imag(d))) > 1e-12:
+        if log_message:
+            log_message.warning(f'Wigner_d({theta:.2f},{j:02d}) may not give reliable results.')  # dispstat(sprintf(warn_mes),'keepthis','timestamp')
+
+    # Change Data Type (np.complex128 -> np.float64)
+    return np.real(d).astype(np.float64)
+
+def normTauPiP(theta: np.float64, nmax: np.int16, order: str, log_message=None) -> tuple:
+    """NormTauPiP
+
+    Args:
+        theta (float): Polar angle (rad)
+        nmax (int): Maximum expansion order
+        order (string): Ordering of tables ('normal' or 'reversed')
+        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        
+    Returns:
+        Tuple: Normalized Tau , Pi , and P functions
+        NTau (ndarray[float], n x (2n+1)): Normalized Tau array
+        NPi (ndarray[float], n x (2n+1)): Normalized Pi array
+        NP (ndarray[float], n x (2n+1)): Normalized P array
+
+    Calling functions:
+        Wigner_d (ndarray[float], (2j+1)x(2j+1)): Wigner d matrix
+    """
+    ## Preallocation ##
+    NTau = np.zeros((nmax,2*nmax+1), dtype=np.float64)
+    NPi = np.zeros((nmax,2*nmax+1), dtype=np.float64)
+    NP = np.zeros((nmax,2*nmax+1), dtype=np.float64)
+
+    for indn in range(1,nmax+1):
+        # Calling Wigner d Matrix of Order n #
+        dn = wigner_d(theta, indn, log_message=log_message)
+
+        # Setting the Order
+        if order=='normal':
+            # d_(m,+1)^n
+            dnp1 = dn[:,indn+1].T.conj()
+            # d_(m,0)^n
+            dn01 = dn[:,indn].T.conj()
+            # d_(m,-1)^n
+            dnn1 = dn[:,indn-1].T.conj()
+        elif order=='reversed':
+            # d_(m,+1)^n
+            dnp1 = dn[:,indn+1].T.conj()[::-1]
+            # d_(m,0)^n
+            dn01 = dn[:,indn].T.conj()[::-1]
+            # d_(m,-1)^n
+            dnn1 = dn[:,indn-1].T.conj()[::-1]
+        
+        # Normalization Constants
+        NormTauPi = np.sqrt((2*indn+1)/8)
+        NormP = np.sqrt((2*indn+1) / (2*indn*(indn+1)))
+        
+        # Output Functions
+        Lind = (2*indn+1)
+        NPi[indn-1, :Lind] = -NormTauPi*(dnp1 + dnn1)
+        NTau[indn-1, :Lind] = -NormTauPi*(dnp1 - dnn1)
+        NP[indn-1, :Lind] = NormP*dn01
+
+        # Correction to the Floating Numbers
+        NPi[np.abs(NPi)<1e-15] = 0
+        NTau[np.abs(NTau)<1e-15] = 0
+        NP[np.abs(NP)<1e-15] = 0
+        
+    return NPi, NTau, NP
 
 if __name__ == '__main__':
-    #S_complex, S_derivative_complex = riccati_bessel_function_S(4+5j,5)
-    #C_complex, C_derivative_complex = riccati_bessel_function_C(4+5j,5)
+    #j_complex, y_complex = spherical_bessel_function(3+4j, 1)
+    #print(f'{j_complex=}')
+    #print(f'{y_complex=}')
+    #S_complex, S_derivative_complex = riccati_bessel_function_S(4+5j,10)
+    #C_complex, C_derivative_complex = riccati_bessel_function_C(4+5j,10)
     #print(f'{S_complex = }')
     #print(f'{S_derivative_complex = }')
     #print(f'{C_complex = }')
     #print(f'{C_derivative_complex = }')
-    #DS_complex = logarithmic_derivative_riccati_bessel_function_S(4+5j,5)
-    Dxi_complex = logarithmic_derivative_riccati_bessel_function_xi(4+5j,5)
-    print(f'{Dxi_complex=}')
-    
+    #DS_complex = logarithmic_derivative_riccati_bessel_function_S(4+5j,3)
+    #print(f'{DS_complex=}')
+    #Dxi_complex = logarithmic_derivative_riccati_bessel_function_xi(4+5j,3)
+    #print(f'{Dxi_complex=}')
+    NPi, NTau, NP = normTauPiP(1,1,'normal')
+    print(f'{NPi=}')
+    print(f'{NP=}')
+    print(f'{NTau=}')
