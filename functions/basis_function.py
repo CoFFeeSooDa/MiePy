@@ -126,8 +126,11 @@ def spherical_bessel_function(z: np.complex128, n: np.int16, log_message=None) -
     j_complex = np.zeros([n+1,1], dtype=np.complex128)
     # Zeroth-order spherical Bessel function
     j0 = np.sin(z)/z
+    j_complex[0] = j0
     # First-order spherical Bessel function
-    j1 = (j_complex[0] - np.cos(z)) / z
+    if n != 0:
+        j1 = (j_complex[0] - np.cos(z)) / z
+        j_complex[1] = j1
     # Compute spherical Bessel functions of order >= 2
     if n >= 2:
         # Set the starting order for the backward recursive computations
@@ -152,7 +155,8 @@ def spherical_bessel_function(z: np.complex128, n: np.int16, log_message=None) -
         else:
             cs = j1/cf0
         # Fill in the results of spherical Bessel functions
-        for kk in range(np.min([nm,n]) + 1):
+        print(f'{nm=}')
+        for kk in range(2,np.min([nm,n]) + 1):
             j_complex[kk] = cs * j_complex[kk]
     
     # Initialize the array of spherical Neumann functions
@@ -160,13 +164,15 @@ def spherical_bessel_function(z: np.complex128, n: np.int16, log_message=None) -
     # Zeroth-order spherical Neumann function
     y_complex[0] = -np.cos(z) / z
     # First-order spherical Neumann function
-    y_complex[1] = (y_complex[0] - np.sin(z)) / z
+    if n != 0:
+        y_complex[1] = (y_complex[0] - np.sin(z)) / z
     # Fill in the results of spherical Bessel functions
-    for kk in range(2, min(nm, n) + 1):
-        if abs(j_complex[kk-1]) >= abs(j_complex[kk-2]):
-            y_complex[kk] = (j_complex[kk] * y_complex[kk - 1] - 1.0 / z**2) / j_complex[kk - 1]
-        else:
-            y_complex[kk] = (j_complex[kk] * y_complex[kk - 2] - (2.0 * kk - 1.0) / z**3) / j_complex[kk - 2]
+    if n >= 2:
+        for kk in range(2, min(nm, n) + 1):
+            if abs(j_complex[kk-1]) >= abs(j_complex[kk-2]):
+                y_complex[kk] = (j_complex[kk] * y_complex[kk - 1] - 1.0 / z**2) / j_complex[kk - 1]
+            else:
+                y_complex[kk] = (j_complex[kk] * y_complex[kk - 2] - (2.0 * kk - 1.0) / z**3) / j_complex[kk - 2]
 
 
     return j_complex, y_complex
@@ -203,7 +209,8 @@ def riccati_bessel_function_S(z: np.complex128, n: np.int16, log_message=None) -
         S_complex1 =  S_complex0 / z - np.cos(z)
         
         S_complex[0] = S_complex0
-        S_complex[1] = S_complex1
+        if n != 0:
+            S_complex[1] = S_complex1
 
         if n >= 2:
             M = _msta1(z,200)
@@ -229,10 +236,11 @@ def riccati_bessel_function_S(z: np.complex128, n: np.int16, log_message=None) -
                 S_complex[jj] = CS * S_complex[jj]
         
         S_derivative_complex[0] = np.cos(z)
-        S_derivative_complex[1] = -S_complex1/z + S_complex0
-
-        for jj in range(2,nm+1):
-            S_derivative_complex[jj] = -jj*S_complex[jj]/z + S_complex[jj-1]
+        if n != 0:
+            S_derivative_complex[1] = -S_complex1/z + S_complex0
+        if n >= 2:
+            for jj in range(2,nm+1):
+                S_derivative_complex[jj] = -jj*S_complex[jj]/z + S_complex[jj-1]
         
         return S_complex, S_derivative_complex
     
@@ -273,26 +281,31 @@ def riccati_bessel_function_C(z: np.complex128, n: np.int16, log_message=None) -
         C_complex1 =  C_complex0 / z - np.sin(z)
 
         C_complex[0] = C_complex0
-        C_complex[1] = C_complex1
+        if n != 0:
+            C_complex[1] = C_complex1
 
         tmp0 = C_complex0
         tmp1 = C_complex1
 
-        for jj in range(2,n+1):
-            tmp2 = (2.0 * jj - 1.0) * tmp1/z - tmp0
-            if np.abs(tmp2) > 1e300:
+        if n >= 2:
+            for jj in range(2,n+1):
+                tmp2 = (2.0 * jj - 1.0) * tmp1/z - tmp0
+                if np.abs(tmp2) > 1e300:
+                    max_ind = jj
+                    continue
+                C_complex[jj] = tmp2
+                tmp0 = tmp1
+                tmp1 = tmp2
                 max_ind = jj
-                continue
-            C_complex[jj] = tmp2
-            tmp0 = tmp1
-            tmp1 = tmp2
-            max_ind = jj
 
         # Calculate and fill in data in C_derivative_complex
         C_derivative_complex[0] = np.sin(z)
-        C_derivative_complex[1] = -C_complex1/z + C_complex0
-        for jj in range(2,max_ind+1):
-            C_derivative_complex[jj] = -jj*C_complex[jj]/z + C_complex[jj-1]
+        if n != 0:
+            C_derivative_complex[1] = -C_complex1/z + C_complex0
+
+        if n >= 2:
+            for jj in range(2,max_ind+1):
+                C_derivative_complex[jj] = -jj*C_complex[jj]/z + C_complex[jj-1]
         
         return C_complex, C_derivative_complex
 
@@ -316,10 +329,14 @@ def logarithmic_derivative_riccati_bessel_function_S(z: np.complex128, n: np.int
     # From experience
     nex = (n + np.floor(np.abs(1.0478 * z + 18.692))).astype(np.int16)
     DS_complex = np.zeros([nex+1,1],dtype=np.complex128)
-    for jj in range(nex,1,-1):
-        DS_complex[jj-1] = jj/z - 1/(jj/z + DS_complex[jj])
+    
+    if n >= 2:
+        for jj in range(nex,1,-1):
+            DS_complex[jj-1] = jj/z - 1/(jj/z + DS_complex[jj])
 
-    DS_complex[1] = (z**2 * np.tan(z) + z - np.tan(z)) / (-z**2 + z*np.tan(z))
+    if n != 0:
+        DS_complex[1] = (z**2 * np.tan(z) + z - np.tan(z)) / (-z**2 + z*np.tan(z))
+
     DS_complex[0] = 1 / np.tan(z)
     
     return DS_complex[:n+1]
@@ -343,22 +360,28 @@ def logarithmic_derivative_riccati_bessel_function_xi(z: np.complex128, n: np.in
     """
     Dxi_complex = np.zeros([n+1,1],dtype=np.complex128)
     Dxi_complex[0] = 1j
-    Dxi_complex[1] = (1j * z**2 - z - 1j) / (z**2 + 1j*z)
-    for jj in range(2,n+1):
-        Dxi_complex[jj] = -jj/z + 1/(jj/z - Dxi_complex[jj-1])
+    if n != 0:
+        Dxi_complex[1] = (1j * z**2 - z - 1j) / (z**2 + 1j*z)
+
+    if n >= 2:
+        for jj in range(2,n+1):
+            Dxi_complex[jj] = -jj/z + 1/(jj/z - Dxi_complex[jj-1])
     
     return Dxi_complex
             
         
 
 if __name__ == '__main__':
-    #S_complex, S_derivative_complex = riccati_bessel_function_S(4+5j,5)
-    #C_complex, C_derivative_complex = riccati_bessel_function_C(4+5j,5)
+    #j_complex, y_complex = spherical_bessel_function(3+4j, 1)
+    #print(f'{j_complex=}')
+    #print(f'{y_complex=}')
+    #S_complex, S_derivative_complex = riccati_bessel_function_S(4+5j,10)
+    #C_complex, C_derivative_complex = riccati_bessel_function_C(4+5j,10)
     #print(f'{S_complex = }')
     #print(f'{S_derivative_complex = }')
     #print(f'{C_complex = }')
     #print(f'{C_derivative_complex = }')
-    #DS_complex = logarithmic_derivative_riccati_bessel_function_S(4+5j,5)
-    Dxi_complex = logarithmic_derivative_riccati_bessel_function_xi(4+5j,5)
+    #DS_complex = logarithmic_derivative_riccati_bessel_function_S(4+5j,3)
+    #print(f'{DS_complex=}')
+    Dxi_complex = logarithmic_derivative_riccati_bessel_function_xi(4+5j,3)
     print(f'{Dxi_complex=}')
-    
