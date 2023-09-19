@@ -156,7 +156,6 @@ def spherical_bessel_function(z: np.complex128, n: np.int16, log_message=None) -
         else:
             cs = j1/cf0
         # Fill in the results of spherical Bessel functions
-        print(f'{nm=}')
         for kk in range(2,np.min([nm,n]) + 1):
             j_complex[kk] = cs * j_complex[kk]
     
