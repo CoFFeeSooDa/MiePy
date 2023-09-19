@@ -8,6 +8,7 @@ import numpy as np
 
 # My functions
 import functions.coordinate_transformation as ct
+import functions.basis_function as bf
 
 
 # Main class to compute properties of Mie scattering 
@@ -76,6 +77,8 @@ class MiePy(object):
         print(f'{self.DPos.cartesian=}')
         print(f'{self.DPos.spherical=}')
         ct.spherical_to_spherical([3,0,1.57],1,0,self._log)
+        bf.normTauPiP(1,11,'normal',self._log)
+        
 
 # A class to calculate the position vectors in Cartesian/spherical coordinates
 # type = 'cartesian' or 'spherical'
@@ -102,6 +105,6 @@ class Orientation(object):
 
 if __name__ == '__main__':
     #MP = MiePy('./input_json/Demo_AngleMode_CF.json')
-    MP = MiePy()
+    MP = MiePy(output_debug_file=False)
     MP.test()
     

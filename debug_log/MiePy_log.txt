@@ -1,2 +1,5 @@
 2023-09-07 14:29:09,814:MiePy-INFO: It is a info text
 2023-09-07 14:29:09,815:MiePy-DEBUG: It is a debug text
+2023-09-19 23:28:26,223:MiePy-INFO: It is a info text
+2023-09-19 23:28:26,223:MiePy-DEBUG: It is a debug text
+2023-09-19 23:28:26,224:MiePy-INFO: [92mFunction spherical_to_spherical currently only supports z-directional shift.[0m

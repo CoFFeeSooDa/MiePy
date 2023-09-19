@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import linalg as LA
 
 def _envj(z: np.complex128, n: np.int16, log_message=None) -> float:
     """_envj
@@ -117,7 +118,7 @@ def spherical_bessel_function(z: np.complex128, n: np.int16, log_message=None) -
     if a0 < 1e-60:
         j_complex = np.zeros([n+1,1], dtype=np.complex128)
         y_complex = np.ones([n+1,1], dtype=np.complex128) * (-1e300)
-        if log_message is not None:
+        if log_message:
             log_message.warning('Reduced accuracy of spherical Neumann functions!')
         y_complex[0] = 1e0
         return j_complex, y_complex
@@ -268,7 +269,7 @@ def riccati_bessel_function_C(z: np.complex128, n: np.int16, log_message=None) -
 
     nm = n
     if np.abs(z) < 1e-60:
-        if log_message is not None:
+        if log_message:
             log_message.warning('Reduced accuracy of Riccati-Bessel C functions!')
         C_complex = np.full([n+1,1],-1.0e300, dtype=np.complex128)
         C_derivative_complex = np.full([n+1,1],1.0e300, dtype=np.complex128)
@@ -369,7 +370,99 @@ def logarithmic_derivative_riccati_bessel_function_xi(z: np.complex128, n: np.in
     
     return Dxi_complex
             
+def wigner_d(theta: np.float64, j: np.int16, log_message=None) -> np.ndarray:
+    """Wigner_d
+
+    Args:
+        j (int): j-dimension SO(3) irreducible representation
+        theta (float): Polar angle (rad)
+        log_message (object): object of logging standard module (for the use of MiePy logging only)
         
+    Returns:
+        d (ndarray[float], (2j+1)x(2j+1)): Wigner d matrix
+
+    Reference:
+        Phys. Rev. E, 92, 043307 (2015)
+    """
+    ## Calculation of J+ ##
+    m = np.arange(-j, j)
+    J = np.diag(np.sqrt((j-m)*(j+m+1)), k=-1)
+
+    ## Create the Spectral Decomposition Matrix J_y at z Representation ##
+    Jy = ((J-J.T.conj())/2j).astype(np.complex128)
+    
+    ## Diagonalization ##
+    D,V = LA.eigh(Jy)
+    # Unitary Transformation
+    d = V @ np.diag(np.exp(-1j*theta*D)) @ V.T.conj()
+
+    ## Check the Quality of the Transformation ##
+    if np.max(np.abs(np.imag(d))) > 1e-12:
+        if log_message:
+            log_message.warning(f'Wigner_d({theta:.2f},{j:02d}) may not give reliable results.')  # dispstat(sprintf(warn_mes),'keepthis','timestamp')
+
+    # Change Data Type (np.complex128 -> np.float64)
+    return np.real(d).astype(np.float64)
+
+def normTauPiP(theta: np.float64, nmax: np.int16, order: str, log_message=None) -> tuple:
+    """NormTauPiP
+
+    Args:
+        theta (float): Polar angle (rad)
+        nmax (int): Maximum expansion order
+        order (string): Ordering of tables ('normal' or 'reversed')
+        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        
+    Returns:
+        Tuple: Normalized Tau , Pi , and P functions
+        NTau (ndarray[float], n x (2n+1)): Normalized Tau array
+        NPi (ndarray[float], n x (2n+1)): Normalized Pi array
+        NP (ndarray[float], n x (2n+1)): Normalized P array
+
+    Calling functions:
+        Wigner_d (ndarray[float], (2j+1)x(2j+1)): Wigner d matrix
+    """
+    ## Preallocation ##
+    NTau = np.zeros((nmax,2*nmax+1), dtype=np.float64)
+    NPi = np.zeros((nmax,2*nmax+1), dtype=np.float64)
+    NP = np.zeros((nmax,2*nmax+1), dtype=np.float64)
+
+    for indn in range(1,nmax+1):
+        # Calling Wigner d Matrix of Order n #
+        dn = wigner_d(theta, indn, log_message=log_message)
+
+        # Setting the Order
+        if order=='normal':
+            # d_(m,+1)^n
+            dnp1 = dn[:,indn+1].T.conj()
+            # d_(m,0)^n
+            dn01 = dn[:,indn].T.conj()
+            # d_(m,-1)^n
+            dnn1 = dn[:,indn-1].T.conj()
+        elif order=='reversed':
+            # d_(m,+1)^n
+            dnp1 = dn[:,indn+1].T.conj()[::-1]
+            # d_(m,0)^n
+            dn01 = dn[:,indn].T.conj()[::-1]
+            # d_(m,-1)^n
+            dnn1 = dn[:,indn-1].T.conj()[::-1]
+        
+        # Normalization Constants
+        NormTauPi = np.sqrt((2*indn+1)/8)
+        NormP = np.sqrt((2*indn+1) / (2*indn*(indn+1)))
+        
+        # Output Functions
+        Lind = (2*indn+1)
+        NPi[indn-1, :Lind] = -NormTauPi*(dnp1 + dnn1)
+        NTau[indn-1, :Lind] = -NormTauPi*(dnp1 - dnn1)
+        NP[indn-1, :Lind] = NormP*dn01
+
+        # Correction to the Floating Numbers
+        NPi[np.abs(NPi)<1e-15] = 0
+        NTau[np.abs(NTau)<1e-15] = 0
+        NP[np.abs(NP)<1e-15] = 0
+        
+    return NPi, NTau, NP
 
 if __name__ == '__main__':
     #j_complex, y_complex = spherical_bessel_function(3+4j, 1)
@@ -383,5 +476,9 @@ if __name__ == '__main__':
     #print(f'{C_derivative_complex = }')
     #DS_complex = logarithmic_derivative_riccati_bessel_function_S(4+5j,3)
     #print(f'{DS_complex=}')
-    Dxi_complex = logarithmic_derivative_riccati_bessel_function_xi(4+5j,3)
-    print(f'{Dxi_complex=}')
+    #Dxi_complex = logarithmic_derivative_riccati_bessel_function_xi(4+5j,3)
+    #print(f'{Dxi_complex=}')
+    NPi, NTau, NP = normTauPiP(1,1,'normal')
+    print(f'{NPi=}')
+    print(f'{NP=}')
+    print(f'{NTau=}')
