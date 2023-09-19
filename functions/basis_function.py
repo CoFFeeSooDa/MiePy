@@ -93,8 +93,8 @@ def _msta2(z: np.complex128, n: np.int16, mp: np.int16, log_message=None) -> np.
         f1 = f
     return (nn + 10).astype(np.int16)
 
-def spherical_bessel_function(z: np.complex128, n: np.int16, log_message=None) -> np.ndarray:
-    """spherical_bessel_function
+def spherical_bessel_function_1(z: np.complex128, n: np.int16, log_message=None) -> np.ndarray:
+    """spherical_bessel_function_1
 
     Args:
         z (np.complex128): complex argument of spherical Bessel functions
@@ -103,8 +103,6 @@ def spherical_bessel_function(z: np.complex128, n: np.int16, log_message=None) -
 
     Returns:
         j_complex (ndarray[np.complex128] ((n+1)x1)): complex values of spherical Bessel functions
-                                                      up to n-th order
-        n_complex (ndarray[np.complex128] ((n+1)x1)): complex values of spherical Neumann functions
                                                       up to n-th order
 
     Reference:
@@ -116,11 +114,7 @@ def spherical_bessel_function(z: np.complex128, n: np.int16, log_message=None) -
     # Cases for arguments approach to zero
     if a0 < 1e-60:
         j_complex = np.zeros([n+1,1], dtype=np.complex128)
-        y_complex = np.ones([n+1,1], dtype=np.complex128) * (-1e300)
-        if log_message is not None:
-            log_message.warning('Reduced accuracy of spherical Neumann functions!')
-        y_complex[0] = 1e0
-        return j_complex, y_complex
+        return j_complex
     
     # Initialize the array of spherical Bessel functions
     j_complex = np.zeros([n+1,1], dtype=np.complex128)
@@ -155,8 +149,79 @@ def spherical_bessel_function(z: np.complex128, n: np.int16, log_message=None) -
         else:
             cs = j1/cf0
         # Fill in the results of spherical Bessel functions
-        print(f'{nm=}')
-        for kk in range(2,np.min([nm,n]) + 1):
+        for kk in range(np.min([nm,n]) + 1):
+            j_complex[kk] = cs * j_complex[kk]
+    
+    return j_complex
+
+def spherical_hankel_function_1(z: np.complex128, n: np.int16, log_message=None) -> np.ndarray:
+    """spherical_bessel_function
+
+    Args:
+        z (np.complex128): complex argument of spherical Bessel functions
+        n (int): order of spherical Bessel functions
+        log_message (object): object of logging standard module (for the use of MiePy logging only)
+
+    Returns:
+        h1_complex (ndarray[np.complex128] ((n+1)x1)): complex values of spherical Hankel functions
+                                                       (first kind) up to n-th order 
+        ** h1_complex = j_complex + 1j * y_complex
+
+    Annotation:
+        j_complex (ndarray[np.complex128] ((n+1)x1)) : complex values of spherical Bessel functions
+                                                       up to n-th order
+        y_complex (ndarray[np.complex128] ((n+1)x1)) : complex values of spherical Neumann functions
+                                                       up to n-th order
+
+    Reference:
+        Computation of Special Functions by Shanjie Zhang, Jianming Jin (1996)
+    """
+    
+    a0 = np.abs(z)
+    nm = n
+    # Cases for arguments approach to zero
+    if a0 < 1e-60:
+        j_complex = np.zeros([n+1,1], dtype=np.complex128)
+        y_complex = np.ones([n+1,1], dtype=np.complex128) * (-1e300)
+        if log_message is not None:
+            log_message.warning('Reduced accuracy of spherical Neumann functions!')
+        y_complex[0] = 1e0
+        return j_complex + 1j * y_complex
+    
+    # Initialize the array of spherical Bessel functions
+    j_complex = np.zeros([n+1,1], dtype=np.complex128)
+    # Zeroth-order spherical Bessel function
+    j0 = np.sin(z)/z
+    j_complex[0] = j0
+    # First-order spherical Bessel function
+    if n != 0:
+        j1 = (j_complex[0] - np.cos(z)) / z
+        j_complex[1] = j1
+    # Compute spherical Bessel functions of order >= 2
+    if n >= 2:
+        # Set the starting order for the backward recursive computations
+        m = _msta1(a0,200)
+        if m < n:
+            nm = m
+        else:
+            m = _msta2(a0,n,15)
+        # Define the initial condition
+        cf0 = 0.0
+        cf1 = -99.0
+        # Recursive computations
+        for kk in range(m, -1, -1):
+            cf = (2.0*kk + 3.0) * cf1/z - cf0
+            if kk <= nm :
+                j_complex[kk] = cf
+
+            cf0=cf1
+            cf1=cf
+        if np.abs(j0) > np.abs(j1):
+            cs = j0/cf
+        else:
+            cs = j1/cf0
+        # Fill in the results of spherical Bessel functions
+        for kk in range(np.min([nm,n]) + 1):
             j_complex[kk] = cs * j_complex[kk]
     
     # Initialize the array of spherical Neumann functions
@@ -175,7 +240,7 @@ def spherical_bessel_function(z: np.complex128, n: np.int16, log_message=None) -
                 y_complex[kk] = (j_complex[kk] * y_complex[kk - 2] - (2.0 * kk - 1.0) / z**3) / j_complex[kk - 2]
 
 
-    return j_complex, y_complex
+    return j_complex + 1j * y_complex
 
 def riccati_bessel_function_S(z: np.complex128, n: np.int16, log_message=None) -> np.ndarray:
     """riccati_bessel_function_S
@@ -372,7 +437,7 @@ def logarithmic_derivative_riccati_bessel_function_xi(z: np.complex128, n: np.in
         
 
 if __name__ == '__main__':
-    #j_complex, y_complex = spherical_bessel_function(3+4j, 1)
+    #j_complex, y_complex = spherical_bessel_function(3+4j, 5)
     #print(f'{j_complex=}')
     #print(f'{y_complex=}')
     #S_complex, S_derivative_complex = riccati_bessel_function_S(4+5j,10)
@@ -383,5 +448,7 @@ if __name__ == '__main__':
     #print(f'{C_derivative_complex = }')
     #DS_complex = logarithmic_derivative_riccati_bessel_function_S(4+5j,3)
     #print(f'{DS_complex=}')
-    Dxi_complex = logarithmic_derivative_riccati_bessel_function_xi(4+5j,3)
-    print(f'{Dxi_complex=}')
+    #Dxi_complex = logarithmic_derivative_riccati_bessel_function_xi(4+5j,3)
+    #print(f'{Dxi_complex=}')
+    h1_complex = spherical_hankel_function_1(3+4j, 5)
+    print(f'{h1_complex=}')
