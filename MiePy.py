@@ -136,32 +136,6 @@ class MiePy(object):
         # Assign the dimensionless radial variable
         k = input.tmp['k']
         kr = k * r
-        Args:
-            input (object): object defined by MiePy
-            dipole_type: string to determine the type of dipole
-            function_type : type of the vector spherical functions
-            log_message (object): object of logging standard module (for the use of MiePy logging only)
-            
-        Returns:
-            Tuple: Normalized M and N functions
-            M (ndarray[float], n x (2n+1) x 3): vector spherical function M
-            N (ndarray[float], n x (2n+1) x 3): vector spherical function N
-            
-        """
-        # Assign the max order of n
-        n_max = np.int16(input.expansion_order)
-        # Assign r, theta, and phi determined by the type of dipole
-        if dipole_type == 'source_dipole':
-            r = input.source_dipole.pos_sph[0]
-            theta = input.source_dipole.pos_sph[1]
-            phi = input.source_dipole.pos_sph[2]
-        elif dipole_type == 'test_dipole':
-            r = input.test_dipole.pos_sph[0]
-            theta = input.test_dipole.pos_sph[1]
-            phi = input.test_dipole.pos_sph[2]
-        # Assign the dimensionless radial variable
-        k = input.tmp['k']
-        kr = k * r
 
         # Preallocation
         M = np.zeros([n_max,2*n_max+1,3])
