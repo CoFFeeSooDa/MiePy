@@ -375,6 +375,33 @@ def riccati_bessel_function_C(z: np.complex128, n: np.int16, log_message=None) -
         
         return C_complex, C_derivative_complex
 
+def riccati_bessel_function_xi(z: np.complex128, n: np.int16, log_message=None) -> np.ndarray:
+    """riccati_bessel_function_xi
+
+    Args:
+        z (np.complex128): complex argument of Riccati-Bessel xi functions
+        n (int): order of Riccati-Bessel xi functions
+        log_message (object): object of logging standard module (for the use of MiePy logging only)
+
+    Returns:
+        xi_complex (ndarray[np.complex128] ((n+1)x1))           : complex values of Riccati-Bessel xi functions
+                                                                  (xi functions) up to n-th order 
+        xi_derivative_complex (ndarray[np.complex128] ((n+1)x1)): complex values of the derivatives of Riccati-
+                                                                  Bessel xi functions (xi functions) up to n-th
+                                                                  order
+        
+        ** Notation adopted from Wikipedia: Bessel function
+
+    Reference:
+        Computation of Special Functions by Shanjie Zhang, Jianming Jin (1996)
+    """
+    S_complex, S_derivative_complex = riccati_bessel_function_S(z, n, log_message)
+    C_complex, C_derivative_complex = riccati_bessel_function_C(z, n, log_message)
+    xi_complex = S_complex + 1j*C_complex
+    xi_derivative_complex = S_derivative_complex + 1j*C_derivative_complex
+
+    return xi_complex, xi_derivative_complex
+
 def logarithmic_derivative_riccati_bessel_function_S(z: np.complex128, n: np.int16, log_message=None) -> np.ndarray:
     """logarithmic_derivative_riccati_bessel_function_S
 
@@ -535,6 +562,9 @@ if __name__ == '__main__':
     #print(f'{y_complex=}')
     #S_complex, S_derivative_complex = riccati_bessel_function_S(4+5j,10)
     #C_complex, C_derivative_complex = riccati_bessel_function_C(4+5j,10)
+    xi_complex, xi_derivative_complex = riccati_bessel_function_xi(3+4j,5)
+    print(f'{xi_complex = }')
+    print(f'{xi_derivative_complex = }')
     #print(f'{S_complex = }')
     #print(f'{S_derivative_complex = }')
     #print(f'{C_complex = }')
@@ -543,5 +573,5 @@ if __name__ == '__main__':
     #print(f'{DS_complex=}')
     #Dxi_complex = logarithmic_derivative_riccati_bessel_function_xi(4+5j,3)
     #print(f'{Dxi_complex=}')
-    h1_complex = spherical_hankel_function_1(3+4j, 5)
-    print(f'{h1_complex=}')
+    #h1_complex = spherical_hankel_function_1(3+4j, 5)
+    #print(f'{h1_complex=}')
