@@ -11,8 +11,8 @@
 		  "Ori_Cart"   		: [0, 0, 1]
 	  },
 	  "ExpansionOrder" 		: 50,
-	  "BoundaryCondition"	: "coreshell",
-	  "BoundaryRadius" 		: [70e-9,60e-9],
+	  "BoundaryCondition"	: "single",
+	  "BoundaryRadius" 		: 60e-9,
 	  "Dpstrength"     		: 1
     },
   "tmp_set"	 : {
