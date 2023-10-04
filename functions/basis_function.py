@@ -567,6 +567,7 @@ def exp_imphi(phi: np.float64, n_max: np.int16, order: str, log_message=None) ->
         
     Returns:
         azi_func (ndarray[np.complex128], n x (2n+1)): Array of e^{im phi}
+        ** NOTE: additional factor (-1)^m is included in the reversed order
     """
     if phi == 0:
         azi_func = np.sqrt(1/2/np.pi,dtype=np.complex128)
@@ -577,7 +578,8 @@ def exp_imphi(phi: np.float64, n_max: np.int16, order: str, log_message=None) ->
                 azi_func[ii,:2*ii+3] = np.exp(1j * np.linspace(-ii-1,ii+1,2*ii+3) * phi)
         elif order == 'reversed':
             for ii in range(n_max):
-                azi_func[ii,:2*ii+3] = np.exp(1j * np.linspace(ii+1,-ii-1,2*ii+3) * phi)
+                azi_func[ii,:2*ii+3] = np.exp(1j * np.linspace(ii+1,-ii-1,2*ii+3) * phi) \
+                                        * (-1)**np.linspace(ii+1,-ii-1,2*ii+3)
     
     return azi_func
 

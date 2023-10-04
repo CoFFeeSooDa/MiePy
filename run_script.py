@@ -13,10 +13,12 @@ wavelength = np.float64(300.0e-9)
 k0 = 2*np.pi / wavelength
 boundary_radius = np.array(inputs['Settings']['BoundaryRadius'])
 k0br = k0 * boundary_radius
+print(f'{k0br=}')
+print(f'{k0=}')
 
 settings = {'SourceDipole':inputs['Settings']['SourceDipole'],
             'TestDipole':inputs['Settings']['TestDipole'],
-            'ExpansionOrder':3,#inputs['Settings']['ExpansionOrder'],
+            'ExpansionOrder':inputs['Settings']['ExpansionOrder'],
             'BoundaryCondition':inputs['Settings']['BoundaryCondition'],
             'BoundaryRadius':boundary_radius,
             'Dpstrength':inputs['Settings']['Dpstrength'],
@@ -29,6 +31,9 @@ settings = {'SourceDipole':inputs['Settings']['SourceDipole'],
 MP = MiePy.MiePy(settings)
 
 #M, N = MP._vector_spherical_function(dipole_type='source', function_type='3')
-EdipS = MP._source_dipole_electric_field()
+#EdipS = MP._source_dipole_electric_field()
+#print(f'{EdipS=}')
 
-print(f'{EdipS=}')
+E = MP.total_electric_field()
+
+print(f'{E=}')

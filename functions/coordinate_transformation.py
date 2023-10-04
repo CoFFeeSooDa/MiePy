@@ -50,11 +50,11 @@ def spherical_to_cartesian(spherical_coord: np.ndarray, log_message=None) -> np.
 
     return cartesian_coord
 
-def spherical_to_spherical(spherical_2: np.ndarray, 
-                           spherical_1_theta: float, 
-                           spherical_1_phi: float,
-                           log_message=None) -> np.ndarray:
-    """spherical_to_spherical
+def vector_spherical_to_spherical(spherical_2: np.ndarray, 
+                                  spherical_1_theta: float, 
+                                  spherical_1_phi: float,
+                                  log_message=None) -> np.ndarray:
+    """vector_spherical_to_spherical
 
     Args:
         spherical_2 (ndarray[float] (3x1)): secondary spherical coordinate
@@ -78,3 +78,32 @@ def spherical_to_spherical(spherical_2: np.ndarray,
     spherical_1 = R @ spherical_2
 
     return spherical_1
+
+def vector_transformation(vector: np.ndarray, solid_angle : np.ndarray, type: str, log_message=None) -> np.ndarray:
+    """vector_transformation
+
+    Args:
+        vector (ndarray[float] (3x1)): vector expressed in Cartesian coordinate
+        solid_angle(ndarray[float] (2x1)): solid angle of the vector position (theta and phi) in radian
+        type (str): either 'c2s' (Cartesian to spherical) or 's2c' (spherical to Cartesian)
+        log_message (object): object of logging standard module (for the use of MiePy logging only)
+
+    Returns:
+        spherical_1 (ndarray[float] (3x1)): primary spherical coordinate
+    """
+    theta, phi = solid_angle
+    # Transformation matrix
+    T = np.array([[np.sin(theta)*np.cos(phi), np.cos(theta)*np.cos(phi), -np.sin(phi)],
+                  [np.sin(theta)*np.sin(phi), np.cos(theta)*np.sin(phi),  np.cos(phi)],
+                  [np.cos(theta)            ,-np.sin(theta)            ,  0          ]], dtype=np.float64)
+    
+    if type == 'c2s':
+        return T.T @ vector
+    elif type == 's2c':
+        return T @ vector
+    else:
+        if log_message:
+            log_message.error('illegal type assignment in vector_tranformation.')
+
+if __name__ == '__main__':
+        print(vector_transformation(np.array([0,0,1]),np.array([0,0])))

@@ -11,6 +11,7 @@ import numpy as np
 import functions.coordinate_transformation as ct
 import functions.basis_function as bf
 import functions.text_color as tc
+import functions.mie_coefficient as mc
 
 
 # Main class to compute properties of Mie scattering 
@@ -64,8 +65,12 @@ class MiePy(object):
         self._log.info('Loading settings...')
 
         # Setting objects of the source dipole and test dipole
-        self.source_dipole = Dipole(settings['SourceDipole'])
-        self.test_dipole  = Dipole(settings['TestDipole'])
+        self.source_dipole = Dipole(settings['SourceDipole'],self._log)
+        self.test_dipole   = Dipole(settings['TestDipole'],self._log)
+
+        self.test_dipole.pos_sph2 = \
+            ct.cartesian_to_spherical(np.array(settings['TestDipole']['Pos_Cart']) - \
+                                      np.array(settings['SourceDipole']['Pos_Cart']), self._log)
 
         # Setting expansion order
         self.expansion_order = settings['ExpansionOrder']
@@ -110,6 +115,42 @@ class MiePy(object):
         find_attribute(self.settings,'settings')
     '''
     
+    def total_electric_field(self):
+        # Calculate the electric dipole field (in the secondary spherical coordinate)
+        electric_dipole_field = self._dipole_source_electric_field()
+        # Transform the electric dipole field to the primary spherical coordinate
+        electric_dipole_field = ct.vector_spherical_to_spherical(electric_dipole_field, 
+                                  self.test_dipole.pos_sph2[1] - self.test_dipole.pos_sph[1], 
+                                  self.test_dipole.pos_sph2[2] - self.test_dipole.pos_sph[1],self._log)
+        # Calculate source coefficients
+        p, q = self._dipole_source_coefficient()
+        p, q = p[:,:,np.newaxis], q[:,:,np.newaxis]
+        # Find the region in which the test dipole is located
+        ind = find_r_region(self.boundary_radius, self.test_dipole.pos_sph[0])
+        if ind == 0:
+            # Calculate Mie coefficients
+            alpha, beta = self._mie_coefficient()[:2]
+            alpha, beta = alpha[:,:,np.newaxis], beta[:,:,np.newaxis]
+            # Calculate vector spherical function at the test dipole position
+            M_test, N_test = self._vector_spherical_function('test', '3')
+            # Scattering electric field
+            E_N = np.einsum('ijk->k', p * alpha * N_test).reshape([3,1])
+            E_M = np.einsum('ijk->k', q * beta  * M_test).reshape([3,1])
+            # Total Electric field
+            electric_field = electric_dipole_field + E_N + E_M
+        elif ind == 1: # temporary for single sphere only
+            # Calculate source coefficient
+            gamma, delta = self._mie_coefficient()[2:]
+            gamma, delta = gamma[:,:,np.newaxis], delta[:,:,np.newaxis]
+            M_test, N_test = self._vector_spherical_function('test', '1')
+            # Scattering electric field
+            E_N = np.einsum('ijk->k', p * delta * N_test).reshape([3,1])
+            E_M = np.einsum('ijk->k', q * gamma * M_test).reshape([3,1])
+            # Total Electric field
+            electric_field = electric_dipole_field + E_N + E_M 
+
+        return electric_field
+        
     def _vector_spherical_function(self, dipole_type: str, function_type: str):
         """_vector_spherical_function
 
@@ -129,24 +170,25 @@ class MiePy(object):
         n_max = np.int16(self.expansion_order)
         # Assign r, theta, and phi determined by the type of dipole
         if dipole_type == 'source':
-            r = self.source_dipole.pos_sph[0]
-            theta = self.source_dipole.pos_sph[1]
-            phi = self.source_dipole.pos_sph[2]
+            r, theta, phi = self.source_dipole.pos_sph
             # Calculate normalized Tau, Pi and P angular functions
             NPi, NTau, NP = bf.normTauPiP(theta, n_max, 'reversed', self._log)
             # Calculate azimuthal function
             azi_func = bf.exp_imphi(phi, n_max, 'reversed',self._log)
+            # Find the region index of the source dipole
+            index = find_r_region(self.boundary_radius,r)
+            # Define a dimensionless radial variable
+            kr = self.nr[index] * self.k0 * r
         elif dipole_type == 'test':
-            r = self.test_dipole.pos_sph[0]
-            theta = self.test_dipole.pos_sph[1]
-            phi = self.test_dipole.pos_sph[2]
+            r, theta, phi = self.test_dipole.pos_sph
             # Calculate normalized Tau, Pi and P angular functions
             NPi, NTau, NP = bf.normTauPiP(theta, n_max, 'normal', self._log)
             # Calculate azimuthal function
             azi_func = bf.exp_imphi(phi, n_max, 'normal',self._log)
-
-        # Assign the dimensionless radial variable
-        kr = self.k * r
+            # Find the region index of the test dipole
+            index = find_r_region(self.boundary_radius,r)
+            # Define a dimensionless radial variable
+            kr = self.nr[index] * self.k0 * r
 
         # Preallocation
         M = np.zeros([n_max,2*n_max+1,3],dtype=np.complex128)
@@ -164,7 +206,6 @@ class MiePy(object):
         z = z[1:]
         raddz = raddz[1:]
 
-        # Angular function
         n = np.linspace(1,n_max,n_max).reshape(n_max,1)
 
         # Calculate Radz (z_n(kr)/kr)
@@ -186,32 +227,61 @@ class MiePy(object):
 
         return M, N
 
-    def _source_coefficient(self):
-        """_source_coefficient
+    def _dipole_source_coefficient(self):
+        """_dipole_source_coefficient
 
         Args:
             self (object): object defined by MiePy
             
         Returns:
-            Tuple: Normalized M and N functions
-            M (ndarray[float], n x (2n+1) x 3): vector spherical function M
-            N (ndarray[float], n x (2n+1) x 3): vector spherical function N
+            Tuple: p, q, r, s (returned values are determined by the location of the source dipole)
+                source in region 0: returns p and q
+                source in region -1: returns r and s
+                others: returns p, q, r, and s
             
         """
-        pass
+        n = self.expansion_order
+        
+        # Find the location (region) of the source dipole
+        index = find_r_region(self.boundary_radius, self.source_dipole.pos_sph[0])
+        # Wavenumber in the dielectric medium
+        k = self.nr[index] * self.k0
+        # Prefactor (for electric field, cgs but cm -> m)
+        prefactor = 4 * np.pi * 1j * k**3
 
-    def _source_dipole_electric_field(self):
-        """_source_dipole_electric_field
+        # Calculate M and N fields for the source dipole according to the location
+        
+        if index == 0:
+            M, N = self._vector_spherical_function(dipole_type='source', function_type='3')
+            p = prefactor*np.einsum('ijk,k->ij',N,self.source_dipole.ori_sph)
+            q = prefactor*np.einsum('ijk,k->ij',M,self.source_dipole.ori_sph)
+            return p, q
+        elif index == self.nr.size-1:
+            M, N = self._vector_spherical_function(self, dipole_type='source', function_type='1')
+            r = prefactor*np.einsum('ijk,k->ij',N,self.source_dipole.ori_sph)
+            s = prefactor*np.einsum('ijk,k->ij',M,self.source_dipole.ori_sph)
+            return r, s
+        else:
+            M1, N1 = self._vector_spherical_function(self, dipole_type='source', function_type='1')
+            r = prefactor*np.einsum('ijk,k->ij',N1,self.source_dipole.ori_sph)
+            s = prefactor*np.einsum('ijk,k->ij',M1,self.source_dipole.ori_sph)
+            M3, N3 = self._vector_spherical_function(self, dipole_type='source', function_type='3')
+            p = prefactor*np.einsum('ijk,k->ij',N3,self.source_dipole.ori_sph)
+            q = prefactor*np.einsum('ijk,k->ij',M3,self.source_dipole.ori_sph)
+            return p, q, r, s
+
+    def _dipole_source_electric_field(self):
+        """_dipole_source_electric_field
 
         Args:
             self (object): object defined by MiePy
             
         Returns:
-            EdipS (3x1 array): electric field of source dipole in the secondary coordinate
+            electric_dipole_field (3x1 array): electric field of source dipole in the secondary coordinate
             
         """
 
-        r, theta, phi = self.source_dipole.pos_sph
+        r, theta, phi = self.test_dipole.pos_sph2
         # Find the region index of the source dipole
         index = find_r_region(self.boundary_radius,r)
         # Wavenumber in dielectrics
@@ -233,11 +303,16 @@ class MiePy(object):
         Nz[0] =  rad1 * np.cos(theta) * 2
         Nz[1] = -rad2 * np.sin(theta)
         # Electric Dipole Field (Gaussian Unit)
-        EdipS = (Nx*self.source_dipole.ori_Cart[0] + \
-                 Ny*self.source_dipole.ori_Cart[1] + \
-                 Nz*self.source_dipole.ori_Cart[2]) * self.nr[index]
+        electric_dipole_field = (Nx*self.source_dipole.ori_cart[0] + \
+                                 Ny*self.source_dipole.ori_cart[1] + \
+                                 Nz*self.source_dipole.ori_cart[2]) * self.nr[index]
 
-        return EdipS
+        return electric_dipole_field
+
+    def _mie_coefficient(self):
+        alpha, beta, gamma, delta = mc.mie_single0(self.nr, self.k0br, self.expansion_order, self._log)
+        return alpha, beta, gamma, delta
+
 
 
 class Dipole(object):
@@ -269,12 +344,12 @@ class Dipole(object):
 
         # Set orientation vector
         if 'Ori_Cart' in inputs.keys():
-            self.ori_Cart = np.array(inputs['Ori_Cart'], dtype=np.float64)
-            # self.Pos_Sph  = ct.cartesian_to_spherical(inputs['Ori_Cart'], log_message)
+            self.ori_cart = np.array(inputs['Ori_Cart'], dtype=np.float64)
+            self.ori_sph  = ct.vector_transformation(inputs['Ori_Cart'], self.pos_sph[1:], 'c2s', log_message)
         elif 'Ori_Sph' in inputs.keys():
-            #self.Pos_Cart = ct.spherical_to_cartesian(inputs['Ori_Sph'], log_message)
-            self.ori_Sph  = np.array(inputs['Pos_Sph'], dtype=np.float64)
-        else:
+            self.ori_cart = ct.vector_transformation(inputs['Ori_Sph'], self.pos_sph[1:], 's2c', log_message)
+            self.ori_sph  = np.array(inputs['Ori_Sph'], dtype=np.float64)
+        elif log_message:
             log_message.error('Incorrect attribute from position vector.')
             log_message.error('Attribute must be "Cart" or "Sph"')
 

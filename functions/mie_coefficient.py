@@ -1,5 +1,5 @@
 import numpy as np
-import basis_function as bf
+import functions.basis_function as bf
 
 def mie_single0(nr:np.ndarray, k0br:np.ndarray, n_max:np.int16, log_message=None):
     """mie_single0
@@ -23,12 +23,12 @@ def mie_single0(nr:np.ndarray, k0br:np.ndarray, n_max:np.int16, log_message=None
     n0, n1 = nr
     n0kr1, n1kr1 = k0br * nr
     # Radial functions
-    n0psi1  = bf.riccati_bessel_function_S(n0kr1, n_max, log_message)[0]
-    n1psi1  = bf.riccati_bessel_function_S(n1kr1, n_max, log_message)[0]
-    n0Dpsi1 = bf.logarithmic_derivative_riccati_bessel_function_S(n0kr1, n_max, log_message)
-    n1Dpsi1 = bf.logarithmic_derivative_riccati_bessel_function_S(n1kr1, n_max, log_message)
-    n0xi1  = bf.riccati_bessel_function_xi(n0kr1, n_max, log_message)[0]
-    n0Dxi1  = bf.logarithmic_derivative_riccati_bessel_function_xi(n0kr1, n_max, log_message)
+    n0psi1  = bf.riccati_bessel_function_S(n0kr1, n_max, log_message)[0][1:]
+    n1psi1  = bf.riccati_bessel_function_S(n1kr1, n_max, log_message)[0][1:]
+    n0Dpsi1 = bf.logarithmic_derivative_riccati_bessel_function_S(n0kr1, n_max, log_message)[1:]
+    n1Dpsi1 = bf.logarithmic_derivative_riccati_bessel_function_S(n1kr1, n_max, log_message)[1:]
+    n0xi1  = bf.riccati_bessel_function_xi(n0kr1, n_max, log_message)[0][1:]
+    n0Dxi1  = bf.logarithmic_derivative_riccati_bessel_function_xi(n0kr1, n_max, log_message)[1:]
 
     # coefficients
     alpha = -(n1 * n0Dpsi1 - n0 * n1Dpsi1) / (n1 * n0Dxi1 - n0 * n1Dpsi1) * n0psi1 / n0xi1
