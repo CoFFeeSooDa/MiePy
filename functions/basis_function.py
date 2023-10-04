@@ -496,12 +496,12 @@ def wigner_d(theta: np.float64, j: np.int16, log_message=None) -> np.ndarray:
     # Change Data Type (np.complex128 -> np.float64)
     return np.real(d).astype(np.float64)
 
-def normTauPiP(theta: np.float64, nmax: np.int16, order: str, log_message=None) -> tuple:
+def normTauPiP(theta: np.float64, n_max: np.int16, order: str, log_message=None) -> tuple:
     """NormTauPiP
 
     Args:
         theta (float): Polar angle (rad)
-        nmax (int): Maximum expansion order
+        n_max (int): Maximum expansion order
         order (string): Ordering of tables ('normal' or 'reversed')
         log_message (object): object of logging standard module (for the use of MiePy logging only)
         
@@ -515,11 +515,11 @@ def normTauPiP(theta: np.float64, nmax: np.int16, order: str, log_message=None) 
         wigner_d (ndarray[float], (2j+1)x(2j+1)): Wigner d matrix
     """
     ## Preallocation ##
-    NTau = np.zeros((nmax,2*nmax+1), dtype=np.float64)
-    NPi = np.zeros((nmax,2*nmax+1), dtype=np.float64)
-    NP = np.zeros((nmax,2*nmax+1), dtype=np.float64)
+    NTau = np.zeros((n_max,2*n_max+1), dtype=np.float64)
+    NPi = np.zeros((n_max,2*n_max+1), dtype=np.float64)
+    NP = np.zeros((n_max,2*n_max+1), dtype=np.float64)
 
-    for indn in range(1,nmax+1):
+    for indn in range(1,n_max+1):
         # Calling Wigner d Matrix of Order n #
         dn = wigner_d(theta, indn, log_message=log_message)
 
@@ -556,12 +556,12 @@ def normTauPiP(theta: np.float64, nmax: np.int16, order: str, log_message=None) 
         
     return NPi, NTau, NP
 
-def exp_imphi(phi: np.float64, nmax: np.int16, order: str, log_message=None) -> np.ndarray:
+def exp_imphi(phi: np.float64, n_max: np.int16, order: str, log_message=None) -> np.ndarray:
     """exp_imphi
 
     Args:
         phi (float): Azimuthal angle (rad)
-        nmax (int): Maximum expansion order
+        n_max (int): Maximum expansion order
         order (string): Ordering of tables ('normal' or 'reversed')
         log_message (object): object of logging standard module (for the use of MiePy logging only)
         
@@ -571,12 +571,12 @@ def exp_imphi(phi: np.float64, nmax: np.int16, order: str, log_message=None) -> 
     if phi == 0:
         azi_func = np.sqrt(1/2/np.pi,dtype=np.complex128)
     else:
-        azi_func = np.zeros([nmax,2*nmax+1],dtype=np.complex128)
+        azi_func = np.zeros([n_max,2*n_max+1],dtype=np.complex128)
         if order == 'normal':
-            for ii in range(nmax):
+            for ii in range(n_max):
                 azi_func[ii,:2*ii+3] = np.exp(1j * np.linspace(-ii-1,ii+1,2*ii+3) * phi)
         elif order == 'reversed':
-            for ii in range(nmax):
+            for ii in range(n_max):
                 azi_func[ii,:2*ii+3] = np.exp(1j * np.linspace(ii+1,-ii-1,2*ii+3) * phi)
     
     return azi_func

@@ -19,7 +19,7 @@ class MiePy(object):
 
     Args:
         theta (float): Polar angle (rad)
-        nmax (int): Maximum expansion order
+        n_max (int): Maximum expansion order
         order (string): Ordering of tables ('normal' or 'reversed')
         log_message (object): object of logging standard module (for the use of MiePy logging only)
         
