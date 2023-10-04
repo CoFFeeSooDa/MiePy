@@ -512,7 +512,7 @@ def normTauPiP(theta: np.float64, nmax: np.int16, order: str, log_message=None) 
         NP (ndarray[float], n x (2n+1)): Normalized P array
 
     Calling functions:
-        Wigner_d (ndarray[float], (2j+1)x(2j+1)): Wigner d matrix
+        wigner_d (ndarray[float], (2j+1)x(2j+1)): Wigner d matrix
     """
     ## Preallocation ##
     NTau = np.zeros((nmax,2*nmax+1), dtype=np.float64)
@@ -556,15 +556,41 @@ def normTauPiP(theta: np.float64, nmax: np.int16, order: str, log_message=None) 
         
     return NPi, NTau, NP
 
+def exp_imphi(phi: np.float64, nmax: np.int16, order: str, log_message=None) -> np.ndarray:
+    """exp_imphi
+
+    Args:
+        phi (float): Azimuthal angle (rad)
+        nmax (int): Maximum expansion order
+        order (string): Ordering of tables ('normal' or 'reversed')
+        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        
+    Returns:
+        azi_func (ndarray[np.complex128], n x (2n+1)): Array of e^{im phi}
+    """
+    if phi == 0:
+        azi_func = np.sqrt(1/2/np.pi,dtype=np.complex128)
+    else:
+        azi_func = np.zeros([nmax,2*nmax+1],dtype=np.complex128)
+        if order == 'normal':
+            for ii in range(nmax):
+                azi_func[ii,:2*ii+3] = np.exp(1j * np.linspace(-ii-1,ii+1,2*ii+3) * phi)
+        elif order == 'reversed':
+            for ii in range(nmax):
+                azi_func[ii,:2*ii+3] = np.exp(1j * np.linspace(ii+1,-ii-1,2*ii+3) * phi)
+    
+    return azi_func
+
+
 if __name__ == '__main__':
     #j_complex, y_complex = spherical_bessel_function(3+4j, 5)
     #print(f'{j_complex=}')
     #print(f'{y_complex=}')
     #S_complex, S_derivative_complex = riccati_bessel_function_S(4+5j,10)
     #C_complex, C_derivative_complex = riccati_bessel_function_C(4+5j,10)
-    xi_complex, xi_derivative_complex = riccati_bessel_function_xi(3+4j,5)
-    print(f'{xi_complex = }')
-    print(f'{xi_derivative_complex = }')
+    #xi_complex, xi_derivative_complex = riccati_bessel_function_xi(3+4j,5)
+    #print(f'{xi_complex = }')
+    #print(f'{xi_derivative_complex = }')
     #print(f'{S_complex = }')
     #print(f'{S_derivative_complex = }')
     #print(f'{C_complex = }')
@@ -575,3 +601,5 @@ if __name__ == '__main__':
     #print(f'{Dxi_complex=}')
     #h1_complex = spherical_hankel_function_1(3+4j, 5)
     #print(f'{h1_complex=}')
+    azi_func = exp_imphi(1,4,'normal')
+    print(f'{azi_func=}')

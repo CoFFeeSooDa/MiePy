@@ -32,7 +32,7 @@ class MiePy(object):
     Calling functions:
         Wigner_d (ndarray[float], (2j+1)x(2j+1)): Wigner d matrix
     """
-    def __init__(self, settings:list, debug_folder=None, output_debug_file=False):
+    def __init__(self, settings:dict, debug_folder=None, output_debug_file=False):
         # Logger setup
         self._output_debug_file = output_debug_file
         if output_debug_file == True:
@@ -65,8 +65,8 @@ class MiePy(object):
 
         # Setting objects of the source dipole and test dipole
         self.source_dipole = Dipole(settings['SourceDipole'])
-        self.test_dipole   = Dipole(settings['TestDipole'])
-        
+        self.test_dipole  = Dipole(settings['TestDipole'])
+
         # Setting expansion order
         self.expansion_order = settings['ExpansionOrder']
         self._log.info(f'Maximum multipole: {self.expansion_order}')
@@ -78,6 +78,9 @@ class MiePy(object):
         self.boundary_radius = settings['BoundaryRadius']
 
         # Other variables that need to be initialized...
+        self.k = settings['k']
+        self.kbr = settings['kbr']
+        self.nr = settings['nr']
         
     @property
     def debug_folder(self):
@@ -107,13 +110,13 @@ class MiePy(object):
         find_attribute(self.settings,'settings')
     '''
     
-    def _vector_spherical_function(inputs: object, dipole_type: str, function_type: str):
+    def _vector_spherical_function(self, dipole_type: str, function_type: str):
         """_vector_spherical_function
 
         Args:
             input (object): object defined by MiePy
-            dipole_type: string to determine the type of dipole
-            function_type : type of the vector spherical functions
+            dipole_type: string to determine the type of dipole ('source' or 'test')
+            function_type : type of the vector spherical functions ('1' or '3')
             log_message (object): object of logging standard module (for the use of MiePy logging only)
             
         Returns:
@@ -123,66 +126,66 @@ class MiePy(object):
             
         """
         # Assign the max order of n
-        n_max = np.int16(input.expansion_order)
+        n_max = np.int16(self.expansion_order)
         # Assign r, theta, and phi determined by the type of dipole
-        if dipole_type == 'source_dipole':
-            r = input.source_dipole.pos_sph[0]
-            theta = input.source_dipole.pos_sph[1]
-            phi = input.source_dipole.pos_sph[2]
-        elif dipole_type == 'test_dipole':
-            r = input.test_dipole.pos_sph[0]
-            theta = input.test_dipole.pos_sph[1]
-            phi = input.test_dipole.pos_sph[2]
+        if dipole_type == 'source':
+            r = self.source_dipole.pos_sph[0]
+            theta = self.source_dipole.pos_sph[1]
+            phi = self.source_dipole.pos_sph[2]
+            # Calculate normalized Tau, Pi and P angular functions
+            NPi, NTau, NP = bf.normTauPiP(theta, n_max, 'reversed', self._log)
+            # Calculate azimuthal function
+            azi_func = bf.exp_imphi(phi, n_max, 'reversed',self._log)
+        elif dipole_type == 'test':
+            r = self.test_dipole.pos_sph[0]
+            theta = self.test_dipole.pos_sph[1]
+            phi = self.test_dipole.pos_sph[2]
+            # Calculate normalized Tau, Pi and P angular functions
+            NPi, NTau, NP = bf.normTauPiP(theta, n_max, 'normal', self._log)
+            # Calculate azimuthal function
+            azi_func = bf.exp_imphi(phi, n_max, 'normal',self._log)
+
         # Assign the dimensionless radial variable
-        k = input.tmp['k']
-        kr = k * r
+        kr = self.k * r
 
         # Preallocation
-        M = np.zeros([n_max,2*n_max+1,3])
-        N = np.zeros([n_max,2*n_max+1,3])
+        M = np.zeros([n_max,2*n_max+1,3],dtype=np.complex128)
+        N = np.zeros([n_max,2*n_max+1,3],dtype=np.complex128)
 
         # Radial function
         if function_type == '1':
-            z = bf.spherical_bessel_function_1(kr, n_max, input._log)
-            raddz = bf.riccati_bessel_function_S(kr, n_max, input._log)[1] / kr
+            z = bf.spherical_bessel_function_1(kr, n_max, self._log)
+            raddz = bf.riccati_bessel_function_S(kr, n_max, self._log)[1] / kr
         elif function_type == '3':
-            z = bf.spherical_hankel_function_1(kr, n_max, input._log)
-            raddz = bf.riccati_bessel_function_xi(kr, n_max, input._log)[1] / kr
+            z = bf.spherical_hankel_function_1(kr, n_max, self._log)
+            raddz = bf.riccati_bessel_function_xi(kr, n_max, self._log)[1] / kr
+        
         
         z = z[1:]
-        raddz = z[1:]
+        raddz = raddz[1:]
 
         # Angular function
         n = np.linspace(1,n_max,n_max).reshape(n_max,1)
 
         # Calculate Radz (z_n(kr)/kr)
         if kr == 0:
-            Radz = np.zeros(n_max,1)
-            Radz[0] = 1/3
+            radz = np.zeros(n_max,1)
+            radz[0] = 1/3
         else:
-            Radz = z / kr
+            radz = z / kr
+
+        # M field
+        M[:,:,1] = 1j * z * NPi *  azi_func
+        M[:,:,2] = - z * NTau * azi_func
+
+        # N field
+        n = np.reshape(np.arange(1,n_max+1),[n_max,1])
+        N[:,:,0] = radz * n*(n+1) * NP * azi_func
+        N[:,:,1] = raddz * NTau * azi_func
+        N[:,:,2] = 1j * raddz * NPi * azi_func
 
         return M, N
-    
-    # Construct vector spherical functions (M and N)
-    #def vector_spherical_function(self,)
-    
-    #Test block
-    def test(self):
-        #self._log.info('It is a info text')
-        #self._log.debug('It is a debug text')
-        #self.DPos = Position([2,2,0],type='cartesian',log_message=self._log)
-        #print(f'{self.DPos.cartesian=}')
-        #print(f'{self.DPos.spherical=}')
-        #ct.spherical_to_spherical([3,0,1.57],1,0,self._log)
-        #bf.normTauPiP(1,11,'normal',self._log)
-        #print(str(self.source_dipole.pos_cart))
-        #print(str(self.source_dipole.pos_sph))
-        #print(str(self.test_dipole.pos_cart))
-        #print(str(self.test_dipole.pos_sph))
-        print('success')
-
-
+   
     
 
 
@@ -232,7 +235,6 @@ class Dipole(object):
 if __name__ == '__main__':
     #MP = MiePy('./input_json/Demo_AngleMode_CF.json')
     MP = MiePy(output_debug_file=False)
-    MP.test()
     #MP.display_attribute()
     
     
