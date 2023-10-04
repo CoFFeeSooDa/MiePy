@@ -78,8 +78,8 @@ class MiePy(object):
         self.boundary_radius = settings['BoundaryRadius']
 
         # Other variables that need to be initialized...
-        self.k = settings['k']
-        self.kbr = settings['kbr']
+        self.k0 = settings['k0']
+        self.k0br = settings['k0br']
         self.nr = settings['nr']
         
     @property
@@ -114,7 +114,7 @@ class MiePy(object):
         """_vector_spherical_function
 
         Args:
-            input (object): object defined by MiePy
+            self (object): object defined by MiePy
             dipole_type: string to determine the type of dipole ('source' or 'test')
             function_type : type of the vector spherical functions ('1' or '3')
             log_message (object): object of logging standard module (for the use of MiePy logging only)
@@ -185,9 +185,59 @@ class MiePy(object):
         N[:,:,2] = 1j * raddz * NPi * azi_func
 
         return M, N
-   
-    
 
+    def _source_coefficient(self):
+        """_source_coefficient
+
+        Args:
+            self (object): object defined by MiePy
+            
+        Returns:
+            Tuple: Normalized M and N functions
+            M (ndarray[float], n x (2n+1) x 3): vector spherical function M
+            N (ndarray[float], n x (2n+1) x 3): vector spherical function N
+            
+        """
+        pass
+
+    def _source_dipole_electric_field(self):
+        """_source_dipole_electric_field
+
+        Args:
+            self (object): object defined by MiePy
+            
+        Returns:
+            EdipS (3x1 array): electric field of source dipole in the secondary coordinate
+            
+        """
+
+        r, theta, phi = self.source_dipole.pos_sph
+        # Find the region index of the source dipole
+        index = find_r_region(self.boundary_radius,r)
+        # Wavenumber in dielectrics
+        k = self.k0 * self.nr[index]
+        # Preallocation (N is the vector spherical function)
+        Nx, Ny, Nz = np.zeros([3,3,1], dtype=np.complex128)
+        # Radial function 
+        rad1 = np.exp(1j * k * r)/r * (r**(-2) - 1j*k/r)
+        rad2 = np.exp(1j * k * r)/r * (k**2 + 1j*k/r - r**(-2))
+        # X-component electric field
+        Nx[0] =  rad1 * np.sin(theta) * np.cos(phi) * 2
+        Nx[1] =  rad2 * np.cos(theta) * np.cos(phi)
+        Nx[2] = -rad2 * np.sin(theta)
+        # Y-component electric field
+        Ny[0] =  rad1 * np.sin(theta) * np.sin(phi) * 2
+        Ny[1] =  rad2 * np.cos(theta) * np.sin(phi)
+        Ny[2] =  rad2 * np.cos(theta)
+        # Z-component electric field
+        Nz[0] =  rad1 * np.cos(theta) * 2
+        Nz[1] = -rad2 * np.sin(theta)
+        # Electric Dipole Field (Gaussian Unit)
+        EdipS = (Nx*self.source_dipole.ori_Cart[0] + \
+                 Ny*self.source_dipole.ori_Cart[1] + \
+                 Nz*self.source_dipole.ori_Cart[2]) * self.nr[index]
+
+        return EdipS
 
 
 class Dipole(object):
@@ -218,23 +268,48 @@ class Dipole(object):
             log_message.error('Attribute must be "Cart" or "Sph"')
 
         # Set orientation vector
-        '''
         if 'Ori_Cart' in inputs.keys():
-            self.Pos_Cart = np.array(inputs['Ori_Cart'], dtype=np.float64)
-            self.Pos_Sph  = ct.cartesian_to_spherical(inputs['Ori_Cart'], log_message)
+            self.ori_Cart = np.array(inputs['Ori_Cart'], dtype=np.float64)
+            # self.Pos_Sph  = ct.cartesian_to_spherical(inputs['Ori_Cart'], log_message)
         elif 'Ori_Sph' in inputs.keys():
-            self.Pos_Cart = ct.spherical_to_cartesian(inputs['Ori_Sph'], log_message)
-            self.Pos_Sph  = np.array(inputs['Pos_Sph'], dtype=np.float64)
+            #self.Pos_Cart = ct.spherical_to_cartesian(inputs['Ori_Sph'], log_message)
+            self.ori_Sph  = np.array(inputs['Pos_Sph'], dtype=np.float64)
         else:
             log_message.error('Incorrect attribute from position vector.')
             log_message.error('Attribute must be "Cart" or "Sph"')
-        '''          
 
+
+
+def find_r_region(boundary_radius:np.ndarray, r:np.float64):
+    """find_r_region
+
+    Args:
+        boundary_radius (array): descending array of radii for sphere(s)
+        r: radius which needs to determine
+        
+    Output: 
+        ind (int): index of the dielectric region
+    """
+    left, right = 0, len(boundary_radius) - 1
+    
+    while left <= right:
+        mid = left + (right - left) // 2
+        
+        if r == boundary_radius[mid]:
+            return mid
+        elif r > boundary_radius[mid]:
+            right = mid - 1
+        else:
+            left = mid + 1
+    
+    return left
 
 
 if __name__ == '__main__':
     #MP = MiePy('./input_json/Demo_AngleMode_CF.json')
-    MP = MiePy(output_debug_file=False)
+    #MP = MiePy(output_debug_file=False)
     #MP.display_attribute()
+
     
-    
+    ind = find_r_region(np.array([70]), 90)
+    print(ind)

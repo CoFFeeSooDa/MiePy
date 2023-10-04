@@ -12,13 +12,13 @@
 	  },
 	  "ExpansionOrder" 		: 50,
 	  "BoundaryCondition"	: "single",
-	  "BoundaryRadius" 		: 60e-9,
+	  "BoundaryRadius" 		: [60e-9],
 	  "Dpstrength"     		: 1
     },
   "tmp_set"	 : {
 	  "mode"	       		: "Auto",
-	  "lambda_i"       		: 405e-9,
-	  "lambda_f"   	   		: 405e-9,
+	  "lambda_i"       		: 300e-9,
+	  "lambda_f"   	   		: 300e-9,
 	  "epsi0"	       		: 1,
 	  "epsi1"	       		: 4,
 	  "epsi2"	       		: ".\\InputFiles\\DielectricFunctions\\Ag_JPCL",
