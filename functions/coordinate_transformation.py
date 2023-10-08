@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 
 # import local functions
@@ -51,19 +52,19 @@ def spherical_to_cartesian(spherical_coord: np.ndarray, log_message=None) -> np.
     return cartesian_coord
 
 def vector_spherical_to_spherical(spherical_2: np.ndarray, 
-                                  spherical_1_theta: float, 
-                                  spherical_1_phi: float,
+                                  spherical_1_theta: np.float64, 
+                                  spherical_1_phi: np.float64,
                                   log_message=None) -> np.ndarray:
     """vector_spherical_to_spherical
 
     Args:
-        spherical_2 (ndarray[float] (3x1)): secondary spherical coordinate
-        spherical_1_theta (float): theta in the S1 coordinate
-        spherical_1_phi (float): phi in the S1 coordinate
-        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        spherical_2 (ndarray[np.float64] (3x1)): Secondary spherical coordinate
+        spherical_1_theta (np.float64): theta in the S1 coordinate
+        spherical_1_phi (np.float64): phi in the S1 coordinate
+        log_message (object): Object of logging standard module (for the use of MiePy logging only)
 
     Returns:
-        spherical_1 (ndarray[float] (3x1)): primary spherical coordinate
+        spherical_1 (ndarray[np.float64] (3x1)): Primary spherical coordinate
     """
     if log_message is not None:
         log_message.info(str_green('Function spherical_to_spherical currently only supports z-directional shift.'))
@@ -83,13 +84,13 @@ def vector_transformation(vector: np.ndarray, solid_angle : np.ndarray, type: st
     """vector_transformation
 
     Args:
-        vector (ndarray[float] (3x1)): vector expressed in Cartesian coordinate
-        solid_angle(ndarray[float] (2x1)): solid angle of the vector position (theta and phi) in radian
-        type (str): either 'c2s' (Cartesian to spherical) or 's2c' (spherical to Cartesian)
-        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        vector (ndarray[np.float64] (3x1)): Vector expressed in Cartesian coordinate
+        solid_angle(ndarray[np.float64] (2x1)): Solid angle of the vector position (theta and phi) in radian
+        type (str): Either 'c2s' (Cartesian to spherical) or 's2c' (spherical to Cartesian)
+        log_message (object): Object of logging standard module (for the use of MiePy logging only)
 
     Returns:
-        spherical_1 (ndarray[float] (3x1)): primary spherical coordinate
+        spherical_1 (ndarray[float] (3x1)): Primary spherical coordinate
     """
     theta, phi = solid_angle
     # Transformation matrix
@@ -104,6 +105,7 @@ def vector_transformation(vector: np.ndarray, solid_angle : np.ndarray, type: st
     else:
         if log_message:
             log_message.error('illegal type assignment in vector_tranformation.')
+        sys.exit('Error occurs in vector_transformation.')
 
 if __name__ == '__main__':
         print(vector_transformation(np.array([0,0,1]),np.array([0,0])))

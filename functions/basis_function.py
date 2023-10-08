@@ -1,17 +1,18 @@
+import sys
 import numpy as np
 from numpy import linalg as LA
 
-def _envj(z: np.complex128, n: np.int16, log_message=None) -> float:
+def _envj(z: np.complex128, n: np.int16, log_message=None) -> np.float64:
     """_envj
 
     Args:
-        n (int): order of spherical Bessel functions
-        z (float): argument of spherical Bessel functions
-        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        n (np.int16): Order of spherical Bessel functions
+        z (np.complex128): Argument of spherical Bessel functions
+        log_message (object): Object of logging standard module (for the use of MiePy logging only)
         
 
     Returns:
-        _envj (float): threshold for functions _msta1 and _msta2
+        _envj (np.float64): Threshold for functions _msta1 and _msta2
 
     Reference:
         Computation of Special Functions by Shanjie Zhang, Jianming Jin (1996)
@@ -23,13 +24,13 @@ def _msta1(z: np.complex128, mp: np.int16, log_message=None) -> np.int16:
     """_msta1
 
     Args:
-        z (float): argument of spherical Bessel functions
-        mp (int): inital order of spherical Bessel functions (Please see also the reference)
-        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        z (np.complex128): Argument of spherical Bessel functions
+        mp (np.int16): Inital order of spherical Bessel functions (Please see also the reference)
+        log_message (object): Object of logging standard module (for the use of MiePy logging only)
         
 
     Returns:
-        nn (int): the order for recursive computations
+        nn (np.int16): Order for recursive computations
 
     Reference:
         Computation of Special Functions by Shanjie Zhang, Jianming Jin (1996)
@@ -58,14 +59,14 @@ def _msta2(z: np.complex128, n: np.int16, mp: np.int16, log_message=None) -> np.
     """_msta2
 
     Args:
-        z (float): argument of spherical Bessel functions
-        n (float): order of spherical Bessel functions need to be calculated
-        mp (int): inital order of spherical Bessel functions (Please see also the reference)
+        z (np.complex128): Argument of spherical Bessel functions
+        n (np.int16): Order of spherical Bessel functions need to be calculated
+        mp (np.int16): Inital order of spherical Bessel functions (Please see also the reference)
         log_message (object): object of logging standard module (for the use of MiePy logging only)
         
 
     Returns:
-        nn (int): the order for recursive computations
+        nn (np.int16): Order for recursive computations
 
     Reference:
         Computation of Special Functions by Shanjie Zhang, Jianming Jin (1996)
@@ -98,12 +99,12 @@ def spherical_bessel_function_1(z: np.complex128, n: np.int16, log_message=None)
     """spherical_bessel_function_1
 
     Args:
-        z (np.complex128): complex argument of spherical Bessel functions
-        n (int): order of spherical Bessel functions
-        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        z (np.complex128): Complex argument of spherical Bessel functions
+        n (np.int16): Order of spherical Bessel functions
+        log_message (object): Object of logging standard module (for the use of MiePy logging only)
 
     Returns:
-        j_complex (ndarray[np.complex128] ((n+1)x1)): complex values of spherical Bessel functions
+        j_complex (ndarray[np.complex128] ((n+1)x1)): Complex values of spherical Bessel functions
                                                       up to n-th order
 
     Reference:
@@ -159,19 +160,19 @@ def spherical_hankel_function_1(z: np.complex128, n: np.int16, log_message=None)
     """spherical_bessel_function
 
     Args:
-        z (np.complex128): complex argument of spherical Bessel functions
-        n (int): order of spherical Bessel functions
-        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        z (np.complex128): Complex argument of spherical Bessel functions
+        n (np.int16): Order of spherical Bessel functions
+        log_message (object): Object of logging standard module (for the use of MiePy logging only)
 
     Returns:
-        h1_complex (ndarray[np.complex128] ((n+1)x1)): complex values of spherical Hankel functions
+        h1_complex (ndarray[np.complex128] ((n+1)x1)): Complex values of spherical Hankel functions
                                                        (first kind) up to n-th order 
         ** h1_complex = j_complex + 1j * y_complex
 
     Annotation:
-        j_complex (ndarray[np.complex128] ((n+1)x1)) : complex values of spherical Bessel functions
+        j_complex (ndarray[np.complex128] ((n+1)x1)) : Complex values of spherical Bessel functions
                                                        up to n-th order
-        y_complex (ndarray[np.complex128] ((n+1)x1)) : complex values of spherical Neumann functions
+        y_complex (ndarray[np.complex128] ((n+1)x1)) : Complex values of spherical Neumann functions
                                                        up to n-th order
 
     Reference:
@@ -247,14 +248,14 @@ def riccati_bessel_function_S(z: np.complex128, n: np.int16, log_message=None) -
     """riccati_bessel_function_S
 
     Args:
-        z (np.complex128): complex argument of Riccati-Bessel S functions
-        n (int): order of Riccati-Bessel S functions
-        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        z (np.complex128): Complex argument of Riccati-Bessel S functions
+        n (np.int16): Order of Riccati-Bessel S functions
+        log_message (object): Object of logging standard module (for the use of MiePy logging only)
 
     Returns:
-        S_complex (ndarray[np.complex128] ((n+1)x1))           : complex values of Riccati-Bessel S functions
+        S_complex (ndarray[np.complex128] ((n+1)x1))           : Complex values of Riccati-Bessel S functions
                                                                  (psi functions) up to n-th order 
-        S_derivative_complex (ndarray[np.complex128] ((n+1)x1)): complex values of the derivatives of Riccati-
+        S_derivative_complex (ndarray[np.complex128] ((n+1)x1)): Complex values of the derivatives of Riccati-
                                                                  Bessel S functions (psi functions) up to n-th
                                                                  order
         
@@ -314,14 +315,14 @@ def riccati_bessel_function_C(z: np.complex128, n: np.int16, log_message=None) -
     """riccati_bessel_function_C
 
     Args:
-        z (np.complex128): complex argument of Riccati-Bessel C functions 
-        n (int): order of Riccati-Bessel C functions
-        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        z (np.complex128): Complex argument of Riccati-Bessel C functions 
+        n (np.int16): Order of Riccati-Bessel C functions
+        log_message (object): Object of logging standard module (for the use of MiePy logging only)
 
     Returns:
-        C_complex (ndarray[np.complex128] ((n+1)x1))           : complex values of Riccati-Bessel C functions
+        C_complex (ndarray[np.complex128] ((n+1)x1))           : Complex values of Riccati-Bessel C functions
                                                                  up to n-th order
-        C_derivative_complex (ndarray[np.complex128] ((n+1)x1)): complex values of Riccati-Bessel C functions
+        C_derivative_complex (ndarray[np.complex128] ((n+1)x1)): Complex values of Riccati-Bessel C functions
                                                                  Riccati-Bessel C functions up to n-th order
         
         ** Notation adopted from Wikipedia: Bessel function
@@ -379,14 +380,14 @@ def riccati_bessel_function_xi(z: np.complex128, n: np.int16, log_message=None) 
     """riccati_bessel_function_xi
 
     Args:
-        z (np.complex128): complex argument of Riccati-Bessel xi functions
-        n (int): order of Riccati-Bessel xi functions
-        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        z (np.complex128): Complex argument of Riccati-Bessel xi functions
+        n (np.int16): Order of Riccati-Bessel xi functions
+        log_message (object): Object of logging standard module (for the use of MiePy logging only)
 
     Returns:
-        xi_complex (ndarray[np.complex128] ((n+1)x1))           : complex values of Riccati-Bessel xi functions
+        xi_complex (ndarray[np.complex128] ((n+1)x1))           : Complex values of Riccati-Bessel xi functions
                                                                   (xi functions) up to n-th order 
-        xi_derivative_complex (ndarray[np.complex128] ((n+1)x1)): complex values of the derivatives of Riccati-
+        xi_derivative_complex (ndarray[np.complex128] ((n+1)x1)): Complex values of the derivatives of Riccati-
                                                                   Bessel xi functions (xi functions) up to n-th
                                                                   order
         
@@ -406,12 +407,12 @@ def logarithmic_derivative_riccati_bessel_function_S(z: np.complex128, n: np.int
     """logarithmic_derivative_riccati_bessel_function_S
 
     Args:
-        z (np.complex128): complex argument of logarithmic derivatives of Riccati-Bessel S functions
-        n (int): order of logarithmic derivatives of Riccati-Bessel S functions
-        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        z (np.complex128): Complex argument of logarithmic derivatives of Riccati-Bessel S functions
+        n (np.int16): Order of logarithmic derivatives of Riccati-Bessel S functions
+        log_message (object): Object of logging standard module (for the use of MiePy logging only)
 
     Returns:
-        DS_complex (ndarray[np.complex128] ((n+1)x1))       : complex values of logarithmic derivatives of 
+        DS_complex (ndarray[np.complex128] ((n+1)x1))       : Complex values of logarithmic derivatives of 
                                                               Riccati-Bessel S functions up to n-th order
         
         ** Notation adopted from Wikipedia: Bessel function
@@ -438,12 +439,12 @@ def logarithmic_derivative_riccati_bessel_function_xi(z: np.complex128, n: np.in
     """logarithmic_derivative_riccati_bessel_function_xi
 
     Args:
-        z (np.complex128): complex argument of logarithmic derivatives of Riccati-Bessel xi functions
-        n (int): order of logarithmic derivatives of Riccati-Bessel xi functions
-        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        z (np.complex128): Complex argument of logarithmic derivatives of Riccati-Bessel xi functions
+        n (int): Order of logarithmic derivatives of Riccati-Bessel xi functions
+        log_message (object): Object of logging standard module (for the use of MiePy logging only)
 
     Returns:
-        Dxi_complex (ndarray[np.complex128] ((n+1)x1))       : complex values of logarithmic derivatives of 
+        Dxi_complex (ndarray[np.complex128] ((n+1)x1))       : Complex values of logarithmic derivatives of 
                                                                Riccati-Bessel xi functions up to n-th order
         
         ** Notation adopted from Wikipedia: Bessel function
@@ -466,32 +467,32 @@ def wigner_d(theta: np.float64, j: np.int16, log_message=None) -> np.ndarray:
     """Wigner_d
 
     Args:
-        j (int): j-dimension SO(3) irreducible representation
-        theta (float): Polar angle (rad)
-        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        j (np.int16): j-dimension SO(3) irreducible representation
+        theta (np.float64): Polar angle (rad)
+        log_message (object): Object of logging standard module (for the use of MiePy logging only)
         
     Returns:
-        d (ndarray[float], (2j+1)x(2j+1)): Wigner d matrix
+        d (ndarray[np.float64], (2j+1)x(2j+1)): Wigner d matrix
 
     Reference:
         Phys. Rev. E, 92, 043307 (2015)
     """
-    ## Calculation of J+ ##
+    # Calculation of J+ 
     m = np.arange(-j, j)
     J = np.diag(np.sqrt((j-m)*(j+m+1)), k=-1)
 
-    ## Create the Spectral Decomposition Matrix J_y at z Representation ##
+    # Create the Spectral Decomposition Matrix J_y at z Representation 
     Jy = ((J-J.T.conj())/2j).astype(np.complex128)
     
-    ## Diagonalization ##
+    # Diagonalization 
     D,V = LA.eigh(Jy)
     # Unitary Transformation
     d = V @ np.diag(np.exp(-1j*theta*D)) @ V.T.conj()
 
-    ## Check the Quality of the Transformation ##
+    # Check the Quality of the Transformation
     if np.max(np.abs(np.imag(d))) > 1e-12:
         if log_message:
-            log_message.warning(f'Wigner_d({theta:.2f},{j:02d}) may not give reliable results.')  # dispstat(sprintf(warn_mes),'keepthis','timestamp')
+            log_message.warning(f'Wigner_d({theta:.2f},{j:02d}) may not give reliable results.')
 
     # Change Data Type (np.complex128 -> np.float64)
     return np.real(d).astype(np.float64)
@@ -500,27 +501,27 @@ def normTauPiP(theta: np.float64, n_max: np.int16, order: str, log_message=None)
     """NormTauPiP
 
     Args:
-        theta (float): Polar angle (rad)
-        n_max (int): Maximum expansion order
-        order (string): Ordering of tables ('normal' or 'reversed')
-        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        theta (np.float64): Polar angle (rad)
+        n_max (np.int16): Maximum expansion order
+        order (str): Ordering of tables ('normal' or 'reversed')
+        log_message (object): Object of logging standard module (for the use of MiePy logging only)
         
     Returns:
         Tuple: Normalized Tau , Pi , and P functions
-        NTau (ndarray[float], n x (2n+1)): Normalized Tau array
-        NPi (ndarray[float], n x (2n+1)): Normalized Pi array
-        NP (ndarray[float], n x (2n+1)): Normalized P array
+            NTau (ndarray[np.float64], n x (2n+1)): Normalized Tau array
+            NPi (ndarray[np.float64], n x (2n+1)): Normalized Pi array
+            NP (ndarray[np.float64], n x (2n+1)): Normalized P array
 
     Calling functions:
-        wigner_d (ndarray[float], (2j+1)x(2j+1)): Wigner d matrix
+        wigner_d (ndarray[np.float64], (2j+1)x(2j+1)): Wigner d matrix
     """
-    ## Preallocation ##
+    # Preallocation
     NTau = np.zeros((n_max,2*n_max+1), dtype=np.float64)
     NPi = np.zeros((n_max,2*n_max+1), dtype=np.float64)
     NP = np.zeros((n_max,2*n_max+1), dtype=np.float64)
 
     for indn in range(1,n_max+1):
-        # Calling Wigner d Matrix of Order n #
+        # Calling Wigner d Matrix of Order n 
         dn = wigner_d(theta, indn, log_message=log_message)
 
         # Setting the Order
@@ -560,14 +561,14 @@ def exp_imphi(phi: np.float64, n_max: np.int16, order: str, log_message=None) ->
     """exp_imphi
 
     Args:
-        phi (float): Azimuthal angle (rad)
-        n_max (int): Maximum expansion order
-        order (string): Ordering of tables ('normal' or 'reversed')
-        log_message (object): object of logging standard module (for the use of MiePy logging only)
+        phi (np.float64): Azimuthal angle (rad)
+        n_max (np.int16): Maximum expansion order
+        order (str): Ordering of tables ('normal' or 'reversed')
+        log_message (object): Object of logging standard module (for the use of MiePy logging only)
         
     Returns:
         azi_func (ndarray[np.complex128], n x (2n+1)): Array of e^{im phi}
-        ** NOTE: additional factor (-1)^m is included in the reversed order
+        ** NOTICE: Additional factor (-1)^m is included in the reversed order
     """
     if phi == 0:
         azi_func = np.sqrt(1/2/np.pi,dtype=np.complex128)

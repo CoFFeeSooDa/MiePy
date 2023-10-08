@@ -85,8 +85,12 @@ class MiePy(object):
         # Other variables that need to be initialized...
         self.k0 = settings['k0']
         self.k0br = settings['k0br']
-        self.nr = settings['nr']
+        self.ni = settings['ni']
         
+        # location of source dipole
+        self.source_dipole.region = find_r_region(self.boundary_radius,self.source_dipole.pos_sph[0])
+        
+
     @property
     def debug_folder(self):
         #Get or set the path for debug logging. Will create folder if not existing.
@@ -103,7 +107,13 @@ class MiePy(object):
                 path.mkdir(parents=True)
             self._debug_folder = path
     
-    
+    def refresh(self, calc:dict):
+        # Other variables that need to be initialized...
+        self.k0 = calc['k0']
+        self.k0br = calc['k0br']
+        self.ni = calc['ni']
+
+
     '''
     # Display attributes
     def display_inputs_attribute(self):    
@@ -116,6 +126,31 @@ class MiePy(object):
     '''
     
     def total_electric_field(self):
+        """total_electric_field
+
+        Args:
+            self.expansion_order (np.int16): Expansion order of the vector spherical functions
+            self.source_dipole.pos_sph (ndarray[np.float64] 1x3): Position of the source dipole (spherical coordiante)
+            self.source_dipole.region (np.int16): Index of the region where the source dipole is located
+            self.k0 (np.float64): Wavenumber in vacuum
+            self.ni (ndarray[np.complex128] 1xm): Complex refractive indices in each region (m = 2, 3)
+            log_message (object): Object of logging standard module (for the use of MiePy logging only)
+
+        Methods:
+            self._dipole_source_electric_field (ndarray[np.complex128] 3x1): Electric field of the source dipole in the secondary coordinate
+            self._dipole_source_coefficient(tuple): Expansion coefficients of a electric dipole (p, q, r, s)
+            self._mie_coefficient (tuple): Mie coefficients (alpha, beta, gamma and delta)
+            self._vector_spherical_function (tuple): Calculate normalized vector spherical functions (M and N)
+           
+        Returns:
+            Tuple: Normalized M and N functions
+                M (ndarray[float], n x (2n+1) x 3): vector spherical function M
+                N (ndarray[float], n x (2n+1) x 3): vector spherical function N
+        
+        Calling functions:
+            ct.vector_spherical_to_spherical (ndarray[np.float64], 3x1): Trasform to the primary coordinate
+            
+        """
         # Calculate the electric dipole field (in the secondary spherical coordinate)
         electric_dipole_field = self._dipole_source_electric_field()
         # Transform the electric dipole field to the primary spherical coordinate
@@ -155,19 +190,21 @@ class MiePy(object):
         """_vector_spherical_function
 
         Args:
-            self (object): object defined by MiePy
-            dipole_type: string to determine the type of dipole ('source' or 'test')
-            function_type : type of the vector spherical functions ('1' or '3')
-            log_message (object): object of logging standard module (for the use of MiePy logging only)
+            self.expansion_order (np.int16): Expansion order of the vector spherical functions
+            self.source_dipole.pos_sph (ndarray[np.float64] 1x3): Position of the source dipole (spherical coordiante)
+            self.source_dipole.region (np.int16): Index of the region where the source dipole is located
+            self.k0 (np.float64): Wavenumber in vacuum
+            self.ni (ndarray[np.complex128] 1xm): Complex refractive indices in each region (m = 2, 3)
+            log_message (object): Object of logging standard module (for the use of MiePy logging only)
             
         Returns:
             Tuple: Normalized M and N functions
-            M (ndarray[float], n x (2n+1) x 3): vector spherical function M
-            N (ndarray[float], n x (2n+1) x 3): vector spherical function N
+                M (ndarray[float], n x (2n+1) x 3): Vector spherical function M
+                N (ndarray[float], n x (2n+1) x 3): Vector spherical function N
             
         """
         # Assign the max order of n
-        n_max = np.int16(self.expansion_order)
+        n_max = self.expansion_order
         # Assign r, theta, and phi determined by the type of dipole
         if dipole_type == 'source':
             r, theta, phi = self.source_dipole.pos_sph
@@ -175,20 +212,16 @@ class MiePy(object):
             NPi, NTau, NP = bf.normTauPiP(theta, n_max, 'reversed', self._log)
             # Calculate azimuthal function
             azi_func = bf.exp_imphi(phi, n_max, 'reversed',self._log)
-            # Find the region index of the source dipole
-            index = find_r_region(self.boundary_radius,r)
             # Define a dimensionless radial variable
-            kr = self.nr[index] * self.k0 * r
+            kr = self.ni[self.source_dipole.region] * self.k0 * r
         elif dipole_type == 'test':
             r, theta, phi = self.test_dipole.pos_sph
             # Calculate normalized Tau, Pi and P angular functions
             NPi, NTau, NP = bf.normTauPiP(theta, n_max, 'normal', self._log)
             # Calculate azimuthal function
             azi_func = bf.exp_imphi(phi, n_max, 'normal',self._log)
-            # Find the region index of the test dipole
-            index = find_r_region(self.boundary_radius,r)
             # Define a dimensionless radial variable
-            kr = self.nr[index] * self.k0 * r
+            kr = self.ni[self.source_dipole.region] * self.k0 * r
 
         # Preallocation
         M = np.zeros([n_max,2*n_max+1,3],dtype=np.complex128)
@@ -202,8 +235,9 @@ class MiePy(object):
             z = bf.spherical_hankel_function_1(kr, n_max, self._log)
             raddz = bf.riccati_bessel_function_xi(kr, n_max, self._log)[1] / kr
         
-        
+        # Exclude the zeroth-order spherical Bessel (Hankel) function
         z = z[1:]
+        # Exclude the zeroth-order Riccati-Bessel function
         raddz = raddz[1:]
 
         n = np.linspace(1,n_max,n_max).reshape(n_max,1)
@@ -231,32 +265,36 @@ class MiePy(object):
         """_dipole_source_coefficient
 
         Args:
-            self (object): object defined by MiePy
+            self.ni (ndarray[np.complex128] 1xm): Complex refractive indices in each region (m = 2, 3)
+            self.source_dipole.region (np.int16): Index of the region where the source dipole is located
+            self.k0 (np.float64): Wavenumber in vacuum
+            self.source_dipole.ori_cart (ndarray[np.float64] 1x3): Orientation of the source dipole (Cartesian coordinate)
+        
+        Methods:
+            self._vector_spherical_function (tuple): Calculate normalized vector spherical functions (M and N)
+                M (ndarray[np.complex128], n x (2n+1) x 3): Vector spherical function M
+                N (ndarray[np.complex128], n x (2n+1) x 3): Vector spherical function N
             
         Returns:
-            Tuple: p, q, r, s (returned values are determined by the location of the source dipole)
-                source in region 0: returns p and q
-                source in region -1: returns r and s
-                others: returns p, q, r, and s
+            Tuple: Expansion coefficients (p, q, r, s) of a electric dipole (returned values are based on the location of the source dipole)
+                Source in region  0 (outermost region): Returns p and q
+                Source in region -1 (innermost region): Returns r and s
+                Others: Returns p, q, r, and s
             
         """
-        n = self.expansion_order
-        
-        # Find the location (region) of the source dipole
-        index = find_r_region(self.boundary_radius, self.source_dipole.pos_sph[0])
+
         # Wavenumber in the dielectric medium
-        k = self.nr[index] * self.k0
+        k = self.ni[self.source_dipole.region] * self.k0
         # Prefactor (for electric field, cgs but cm -> m)
         prefactor = 4 * np.pi * 1j * k**3
 
-        # Calculate M and N fields for the source dipole according to the location
-        
-        if index == 0:
+        # Calculate M and N fields based on the location of the source dipole
+        if self.source_dipole.region == 0:
             M, N = self._vector_spherical_function(dipole_type='source', function_type='3')
             p = prefactor*np.einsum('ijk,k->ij',N,self.source_dipole.ori_sph)
             q = prefactor*np.einsum('ijk,k->ij',M,self.source_dipole.ori_sph)
             return p, q
-        elif index == self.nr.size-1:
+        elif self.source_dipole.region == self.ni.size-1:
             M, N = self._vector_spherical_function(self, dipole_type='source', function_type='1')
             r = prefactor*np.einsum('ijk,k->ij',N,self.source_dipole.ori_sph)
             s = prefactor*np.einsum('ijk,k->ij',M,self.source_dipole.ori_sph)
@@ -274,18 +312,20 @@ class MiePy(object):
         """_dipole_source_electric_field
 
         Args:
-            self (object): object defined by MiePy
-            
+            self.test_dipole.pos_sph2 (ndarray[np.float64] 1x3): Position of the test dipole in the secondary spherical coordinate
+            self.k0 (np.float64): Wavenumber in vacuum
+            self.ni (ndarray[np.complex128] 1xm): Complex refractive indices in each region (m = 2, 3)
+            self.source_dipole.region (np.int16): Index of the region where the source dipole is located
+            self.source_dipole.ori_cart (ndarray[np.float64] 1x3): Orientation of the source dipole (Cartesian coordinate)
+
         Returns:
-            electric_dipole_field (3x1 array): electric field of source dipole in the secondary coordinate
+            electric_dipole_field (ndarray[np.complex128] 3x1): Electric field of the source dipole in the secondary coordinate
             
         """
 
         r, theta, phi = self.test_dipole.pos_sph2
-        # Find the region index of the source dipole
-        index = find_r_region(self.boundary_radius,r)
         # Wavenumber in dielectrics
-        k = self.k0 * self.nr[index]
+        k = self.k0 * self.ni[self.source_dipole.region]
         # Preallocation (N is the vector spherical function)
         Nx, Ny, Nz = np.zeros([3,3,1], dtype=np.complex128)
         # Radial function 
@@ -305,13 +345,69 @@ class MiePy(object):
         # Electric Dipole Field (Gaussian Unit)
         electric_dipole_field = (Nx*self.source_dipole.ori_cart[0] + \
                                  Ny*self.source_dipole.ori_cart[1] + \
-                                 Nz*self.source_dipole.ori_cart[2]) * self.nr[index]
+                                 Nz*self.source_dipole.ori_cart[2]) * self.ni[self.source_dipole.region]
 
         return electric_dipole_field
 
     def _mie_coefficient(self):
-        alpha, beta, gamma, delta = mc.mie_single0(self.nr, self.k0br, self.expansion_order, self._log)
-        return alpha, beta, gamma, delta
+        """_mie_coefficient
+
+        Args:
+            self.boundary_condition (str): Either 'single' or 'coreshell'
+            self.source_dipole.region (np.int16): Index of the region where the source dipole is located
+            self.ni (ndarray[np.complex128], 1 x m): Complex refractive indices of each region (m = 2, 3)
+            self.boundary_radius (ndarray[np.float64], 1 x (m-1)): Radius of spherical boundary
+            self.k0br (ndarray[np.float64], 1 x (m-1)): k0 * boundary_radious (m = 2, 3)
+            self.expansion_order (np.int16): Expansion order of vector spherical functions
+            log_message (object): Object of logging standard module (for the use of MiePy logging only)
+            
+        Returns:
+            Tuple: Mie coefficients of alpha0, beta0, gamma1 and delta1 (Only for single sphere currently)
+                alpha0 (ndarray[float], n x 1): alpha0 coefficient
+                beta0  (ndarray[float], n x 1): beta0 coefficient
+                gamma1 (ndarray[float], n x 1): gamma1 coefficient
+                delta1 (ndarray[float], n x 1): delta1 coefficient
+            Tuple: Mie coefficients of alpha0, beta0, gamma1 and delta1 (For core/shell sphere, TODO)
+                alpha0 (ndarray[float], n x 1): alpha0 coefficient
+                beta0  (ndarray[float], n x 1): beta0 coefficient
+                alpha1 (ndarray[float], n x 1): alpha1 coefficient
+                beta1  (ndarray[float], n x 1): beta1 coefficient
+                gamma1 (ndarray[float], n x 1): gamma1 coefficient
+                delta1 (ndarray[float], n x 1): delta1 coefficient
+                gamma2 (ndarray[float], n x 1): gamma2 coefficient
+                delta2 (ndarray[float], n x 1): delta2 coefficient
+
+        Calling functions:
+            functions.mie_coefficient: Functions of Mie coefficients
+        """
+        # Calculate coefficients based on the boundary condition(s)
+        if self.boundary_condition == 'single':
+            # Find the region at which the source dipole is located
+            if self.source_dipole.region == 0:
+                # Call the function for the source dipole located at region 0
+                alpha0, beta0, gamma1, delta1 = mc.mie_single0(self.ni, self.k0br, self.expansion_order, self._log)
+            else:
+                # Call the function for the source dipole located at region 1
+                alpha0, beta0, gamma1, delta1 = mc.mie_single1(self.ni, self.k0br, self.expansion_order, self._log)
+
+            return alpha0, beta0, gamma1, delta1
+        elif self.boundary_condition == 'coreshell':
+            # Find the region at which the source dipole is located
+            if self.source_dipole.region == 0:
+                # Call the function for the source dipole located at region 0
+                alpha0, beta0, alpha1, beta1, gamma1, delta1, gamma2, delta2 = \
+                    mc.mie_coreshell0(self.ni, self.k0br, self.expansion_order, self._log)
+            elif self.source_dipole.region == 1:
+                # Call the function for the source dipole located at region 1
+                alpha0, beta0, alpha1, beta1, gamma1, delta1, gamma2, delta2 = \
+                    mc.mie_coreshell1(self.ni, self.k0br, self.expansion_order, self._log)
+            else:
+                # Call the function for the source dipole located at region 2
+                alpha0, beta0, alpha1, beta1, gamma1, delta1, gamma2, delta2 = \
+                    mc.mie_coreshell2(self.ni, self.k0br, self.expansion_order, self._log)
+            
+            return alpha0, beta0, alpha1, beta1, gamma1, delta1, gamma2, delta2
+        
 
 
 
