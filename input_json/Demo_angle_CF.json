@@ -1,0 +1,29 @@
+{
+  "Settings" : {
+	  "ModeName"       		: "angle",
+	  "SourceDipole"   		: {
+		  "Pos_Cart"   		: [0, 0, 80e-9],
+		  "Ori_Cart"   		: [0, 0, 1]
+	  },
+	  "TestDipole"     		: {
+		  "Pos_Sph"   		: [80e-9, 5, 0],
+		  "Ori_Sph"   		: [1, 0, 0]
+	  },
+	  "ExpansionOrder" 		: 50,
+	  "BoundaryCondition"	: "single",
+	  "BoundaryRadius" 		: [60e-9],
+	  "Dpstrength"     		: 1,
+	  "epsi0"	       		: 1,
+	  "epsi1"	       		: "./dielectric_data/Ag_JPCL.csv",
+	  "lambda_i"       		: 405e-9,
+	  "lambda_f"   	   		: 405e-9,
+	  "Theta_i"        		: 5,
+	  "Theta_f"        		: 180,
+	  "ThetaPoints"    		: 176
+    },
+  "Output"	 : {
+	  "Quantity"       		: "CF",
+	  "MatFile"				: true,
+	  "DisplayFigure"		: false
+    }
+}

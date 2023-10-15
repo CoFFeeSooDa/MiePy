@@ -2,46 +2,54 @@ import csv
 import numpy as np
 import functions.utility as util
 import MiePy
+import scipy
+import time
 
 
 # Path of input file
-json_path = './input_json/Demo_AngleMode_CF.json'
+json_path = './input_json/Demo_wavelength_CF.json'
 
 # Read from json file
 inputs = util.read_settings_json(json_path)
 
 # Read dielectric data according to the settings in json
 settings = inputs['Settings']
-#calc = inputs['Settings'].copy()
 
-# Preprocessing (initialize settings of a calculation)
-wavelength = settings['wavelength']
-k0 = 2*np.pi / wavelength
-boundary_radius = np.array(inputs['Settings']['BoundaryRadius'])
-k0br = k0[0] * boundary_radius
+# We set calc to a single calculation data
+calc = inputs['Settings'].copy()
 
-
-calc = {'SourceDipole':inputs['Settings']['SourceDipole'],
-        'TestDipole':inputs['Settings']['TestDipole'],
-        'ExpansionOrder':inputs['Settings']['ExpansionOrder'],
-        'BoundaryCondition':inputs['Settings']['BoundaryCondition'],
-        'BoundaryRadius':boundary_radius,
-        'Dpstrength':inputs['Settings']['Dpstrength'],
-        'wavelength':(settings['wavelength'])[0],
-        'k0': k0,
-        'k0br': k0br,
-        'ni': np.array([1, 1.349872708298668+0.990253984899622j])}
+# Start timing 
+start_time = time.time()
 
 # Initialize MiePy solver
 MP = MiePy.MiePy(calc)
 
-for ii in range(10):
-    calc['wavelength'] = (settings['wavelength'])[ii]
-    calc['k0'] = k0[ii]
-    calc['ni'] = (settings['ni'])[ii]
-    print(calc['ni'])
-    calc['k0br'] = k0[ii] * boundary_radius
-    MP.refresh(calc)
-    E = MP.total_electric_field()
-    print(f'{E=}')
+# Main loop
+if settings['ModeName'] == 'wavelength':
+    # Preallocation
+    CF = np.zeros([401,1], dtype=np.float64)
+    for ii in range(401):    
+        calc['wavelength'] = (settings['wavelength'])[ii]
+        calc['k0'] = (settings['k0'])[ii]
+        calc['ni'] = (settings['ni'])[ii]
+        calc['k0br'] = (settings['k0br'])[ii]
+        MP.refresh(calc)
+        CF[ii:ii+1,:] = MP.coupling_factor()
 
+elif settings['ModeName'] == 'angle':
+    # Preallocation
+    CF = np.zeros([176,1], dtype=np.float64)
+    theta = np.linspace(settings['Theta_i'],settings['Theta_f'],settings['ThetaPoints'])
+    for ii in range(176):
+        (calc['TestDipole']['Pos_Sph'])[1] = theta[ii]
+        MP.refresh(calc)
+        CF[ii:ii+1,:] = MP.coupling_factor()
+
+mat_dict = {"CF":CF}
+scipy.io.savemat('test.mat',mat_dict)
+
+# Stop timing 
+end_time = time.time()
+
+# Output elapsed time
+MP.output_elapsed_time(end_time - start_time)

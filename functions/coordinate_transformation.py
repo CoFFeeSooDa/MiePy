@@ -4,7 +4,8 @@ import numpy as np
 # import local functions
 from functions.text_color import str_green
 
-
+global first_time_flag 
+first_time_flag = True
 
 def cartesian_to_spherical(cartesian_coord: np.ndarray, log_message=None) -> np.ndarray:
     """cartesian_to_spherical
@@ -66,8 +67,12 @@ def vector_spherical_to_spherical(spherical_2: np.ndarray,
     Returns:
         spherical_1 (ndarray[np.float64] (3x1)): Primary spherical coordinate
     """
-    if log_message is not None:
-        log_message.info(str_green('Function spherical_to_spherical currently only supports z-directional shift.'))
+
+    '''
+    if log_message is not None and first_time_flag is True:
+        log_message.info(str_green('Note: Function spherical_to_spherical currently only supports z-direction shifting.'))
+    '''
+
     cos_theta = np.cos(spherical_1_theta)
     sin_theta = np.sin(spherical_1_theta)
     cos_phi = np.cos(spherical_1_phi)

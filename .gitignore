@@ -1,3 +1,5 @@
 /debug_log/*
 /__pycache__/*
 /functions/__pycache__/*
+
+/*.mat

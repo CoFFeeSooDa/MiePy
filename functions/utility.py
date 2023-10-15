@@ -97,13 +97,16 @@ def read_settings_json(json_file_path):
             ni[:,1] = n1
             wavelength = [lambda0,lambda1][n_max]
     elif inputs['Settings']['lambda_i'] == inputs['Settings']['lambda_f']:
-        if lambda0:
+        if lambda0 is not None:
             n0 = n0[lambda0 == inputs['Settings']['lambda_i']]
-        if lambda1:
+        if lambda1 is not None:
             n1 = n1[lambda1 == inputs['Settings']['lambda_i']]
-        if lambda2:
-            n2 = n2[lambda2 == inputs['Settings']['lambda_i']]
-        ni = np.array([n0,n1,n2],dtype=np.complex128)
+        try:
+            if lambda2 is not None:
+                n2 = n2[lambda2 == inputs['Settings']['lambda_i']]
+            ni = np.array([n0,n1,n2],dtype=np.complex128)
+        except:
+            ni = np.array([n0,n1],dtype=np.complex128)
     else:
         print(tc.str_red('Error occurs in creating refractive index array.'))
         print(tc.str_red('lambda_i = lambda_f. Otherwise, the calculation mode should be the wavelength mode.'))
@@ -114,6 +117,28 @@ def read_settings_json(json_file_path):
         inputs['Settings']['wavelength'] = wavelength
     else:
         inputs['Settings']['wavelength'] = inputs['Settings']['lambda_i']
+
+    inputs['Settings'].pop('epsi0', None)
+    inputs['Settings'].pop('epsi1', None)
+    inputs['Settings'].pop('epsi2', None)
+    inputs['Settings'].pop('lambda_i', None)
+    inputs['Settings'].pop('lambda_f', None)
+
+    if inputs['Settings']['ModeName'] == 'angle':
+        inputs['Settings']['Theta_i'] *= (np.pi/180)
+        inputs['Settings']['Theta_f'] *= (np.pi/180)
+        (inputs['Settings']['TestDipole']['Pos_Sph'])[1] *= (np.pi/180)
+        (inputs['Settings']['TestDipole']['Pos_Sph'])[2] *= (np.pi/180)
+
+    # Preprocessing (initialize settings of a calculation)
+    k0 = 2*np.pi / np.array(inputs['Settings']['wavelength'])
+    if k0.size==1:
+        k0br = k0*np.array(inputs['Settings']['BoundaryRadius'])
+    else:
+        k0br = np.outer(k0, np.array(inputs['Settings']['BoundaryRadius']))
+
+    inputs['Settings']['k0'] = k0
+    inputs['Settings']['k0br'] = k0br
 
     return inputs
 

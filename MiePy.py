@@ -61,36 +61,86 @@ class MiePy(object):
                 lf.setFormatter(format)
                 self._log.addHandler(lf)
         
+        self._log.info('Function spherical_to_spherical currently only supports z-direction shifting.')
+
         # Return MiePy status
         self._log.info('Loading settings...')
 
-        # Setting objects of the source dipole and test dipole
+        # Read mode name
+        self.mode_name = settings['ModeName']
+        self._log.info(f'Mode is set to "{self.mode_name}"')
+
+        # Set objects of the source dipole and test dipole
         self.source_dipole = Dipole(settings['SourceDipole'],self._log)
         self.test_dipole   = Dipole(settings['TestDipole'],self._log)
 
         self.test_dipole.pos_sph2 = \
-            ct.cartesian_to_spherical(np.array(settings['TestDipole']['Pos_Cart']) - \
-                                      np.array(settings['SourceDipole']['Pos_Cart']), self._log)
+            ct.cartesian_to_spherical(self.test_dipole.pos_cart - self.source_dipole.pos_cart, self._log)
 
-        # Setting expansion order
+        # Set expansion order
         self.expansion_order = settings['ExpansionOrder']
         self._log.info(f'Maximum multipole: {self.expansion_order}')
 
         # Set boundary condition
         self.boundary_condition = settings['BoundaryCondition']
+        self._log.info(f'Boundary condition: {self.boundary_condition}')
 
         # Set radii of the boundary
         self.boundary_radius = settings['BoundaryRadius']
+        
+        # location of source dipole
+        self.source_dipole.region = find_r_region(self.boundary_radius,self.source_dipole.pos_sph[0])
+        self._log.info(f'Source dipole in REGION {self.source_dipole.region}')
 
         # Other variables that need to be initialized...
         self.k0 = settings['k0']
         self.k0br = settings['k0br']
         self.ni = settings['ni']
-        
-        # location of source dipole
-        self.source_dipole.region = find_r_region(self.boundary_radius,self.source_dipole.pos_sph[0])
-        
 
+        # Speed Optimization according to the selected mode
+        # (prevent from redundant computation)
+        if self.mode_name == 'wavelength':
+            # Calculate normalized Tau, Pi and P angular functions for the source dipole
+            NPi_s, NTau_s, NP_s = \
+                bf.normTauPiP(self.source_dipole.pos_sph[1], self.expansion_order, 'reversed', self._log)
+            # Calculate azimuthal function for the source dipole
+            azi_func_s = \
+                bf.exp_imphi(self.source_dipole.pos_sph[2], self.expansion_order, 'reversed',self._log)
+            # Calculate normalized Tau, Pi and P angular functions for the source dipole
+            NPi_t, NTau_t, NP_t = \
+                bf.normTauPiP(self.test_dipole.pos_sph[1], self.expansion_order, 'normal', self._log)
+            # Calculate azimuthal function for the source dipole
+            azi_func_t = \
+                bf.exp_imphi(self.test_dipole.pos_sph[2], self.expansion_order, 'normal',self._log)
+            
+            self.speed_up = {"NPi_s": NPi_s, "NTau_s": NTau_s, "NP_s": NP_s, "azi_func_s": azi_func_s,
+                             "NPi_t": NPi_t, "NTau_t": NTau_t, "NP_t": NP_t, "azi_func_t": azi_func_t}
+        elif self.mode_name == 'angle':
+            # Calculate source coefficients
+            p, q = self._source_dipole_coefficient()
+            p, q = p[:,:,np.newaxis], q[:,:,np.newaxis]
+            # Find the region in which the test dipole is located
+            ind = find_r_region(self.boundary_radius, self.test_dipole.pos_sph[0])
+            kr = self.ni[ind] * self.k0 * self.test_dipole.pos_sph[0]
+            if ind == 0:
+                # Calculate radial functions of test dipole
+                z_t = bf.spherical_hankel_function_1(kr, self.expansion_order, self._log)
+                raddz_t = bf.riccati_bessel_function_xi(kr, self.expansion_order, self._log)[1] / kr
+                # Calculate Mie coefficients
+                alpha, beta = self._mie_coefficient()[:2]
+                alpha, beta = alpha[:,:,np.newaxis], beta[:,:,np.newaxis]
+                self.speed_up = {'p': p, 'q': q, 'alpha':alpha, 'beta':beta}
+            elif ind == 1:
+                # Calculate radial functions of test dipole
+                z_t = bf.spherical_bessel_function_1(kr, self.expansion_order, self._log)
+                raddz_t = bf.riccati_bessel_function_S(kr, self.expansion_order, self._log)[1] / kr
+                # Calculate source coefficient
+                gamma, delta = self._mie_coefficient()[2:]
+                gamma, delta = gamma[:,:,np.newaxis], delta[:,:,np.newaxis]
+                self.speed_up = {'p': p, 'q': q, 'gamma':gamma, 'delta':delta}
+        else:
+            self.speed_up = {}
+            
     @property
     def debug_folder(self):
         #Get or set the path for debug logging. Will create folder if not existing.
@@ -108,23 +158,59 @@ class MiePy(object):
             self._debug_folder = path
     
     def refresh(self, calc:dict):
-        # Other variables that need to be initialized...
-        self.k0 = calc['k0']
-        self.k0br = calc['k0br']
-        self.ni = calc['ni']
+        # Other variables that need to be refresh...
+        if self.mode_name == 'wavelength':
+            self.k0 = calc['k0']
+            self.k0br = calc['k0br']
+            self.ni = calc['ni']
+        elif self.mode_name == 'angle':
+            # Recalculate the test dipole
+            self.test_dipole   = Dipole(calc['TestDipole'],self._log)
 
+            self.test_dipole.pos_sph2 = \
+                ct.cartesian_to_spherical(self.test_dipole.pos_cart - self.source_dipole.pos_cart, self._log)
 
-    '''
-    # Display attributes
-    def display_inputs_attribute(self):    
-        find_attribute(self.inputs,'inputs')
-        #for attr in user_defined_attributes:
-        #    print(f"{attr}: {getattr(self.inputs, attr)}")
+    def output_elapsed_time(self, elapsed_time):
+        self._log.info('Job Completed.')
+        self._log.info(f'Elapsed time: {elapsed_time} seconds')
     
-    def display_attribute(self):
-        find_attribute(self.settings,'settings')
-    '''
+    def coupling_factor(self):
+        # cgs unit but cm is replaced by m (CF unit: m^-6)
+        return np.abs(self.test_dipole.ori_sph @ self.total_electric_field())**2
     
+    def source_dipole_electric_field(self):
+        """source_dipole_electric_field
+
+        Args:
+            self.expansion_order (np.int16): Expansion order of the vector spherical functions
+            self.self.test_dipole.pos_sph2 (ndarray[np.float64] 1x3): Position of the test dipole in the secondary spherical coordinate
+            self.self.test_dipole.pos_sph  (ndarray[np.float64] 1x3): Position of the test dipole in the primary spherical coordinate
+            self._log (object): Object of logging standard module (for the use of MiePy logging only)
+            self.speed_up (dict): For reducing redundant computations
+
+        Methods:
+            self._source_dipole_electric_field (ndarray[np.complex128] 3x1): Electric field of the source dipole in the secondary coordinate
+           
+        Returns:
+            electric_dipole_field (ndarray[np.complex128] 3x1): Electric field of the source dipole in the primary coordinate
+            
+        Calling functions:
+            ct.vector_spherical_to_spherical (ndarray[np.float64], 3x1): Trasform to the primary coordinate
+            
+        """
+
+        try:
+            electric_dipole_field = self.speed_up['electric_dipole_field']
+        except:
+            # Calculate the electric dipole field (in the secondary spherical coordinate)
+            electric_dipole_field = self._source_dipole_electric_field()
+            # Transform the electric dipole field to the primary spherical coordinate
+            electric_dipole_field = ct.vector_spherical_to_spherical(electric_dipole_field, 
+                                      self.test_dipole.pos_sph2[1] - self.test_dipole.pos_sph[1], 
+                                      self.test_dipole.pos_sph2[2] - self.test_dipole.pos_sph[2],self._log)
+        
+        return electric_dipole_field
+
     def total_electric_field(self):
         """total_electric_field
 
@@ -137,8 +223,8 @@ class MiePy(object):
             log_message (object): Object of logging standard module (for the use of MiePy logging only)
 
         Methods:
-            self._dipole_source_electric_field (ndarray[np.complex128] 3x1): Electric field of the source dipole in the secondary coordinate
-            self._dipole_source_coefficient(tuple): Expansion coefficients of a electric dipole (p, q, r, s)
+            self.source_dipole_electric_field (ndarray[np.complex128] 3x1): Electric field of the source dipole in the primary spherical coordinate
+            self._source_dipole_coefficient(tuple): Expansion coefficients of a electric dipole (p, q, r, s)
             self._mie_coefficient (tuple): Mie coefficients (alpha, beta, gamma and delta)
             self._vector_spherical_function (tuple): Calculate normalized vector spherical functions (M and N)
            
@@ -151,21 +237,26 @@ class MiePy(object):
             ct.vector_spherical_to_spherical (ndarray[np.float64], 3x1): Trasform to the primary coordinate
             
         """
-        # Calculate the electric dipole field (in the secondary spherical coordinate)
-        electric_dipole_field = self._dipole_source_electric_field()
-        # Transform the electric dipole field to the primary spherical coordinate
-        electric_dipole_field = ct.vector_spherical_to_spherical(electric_dipole_field, 
-                                  self.test_dipole.pos_sph2[1] - self.test_dipole.pos_sph[1], 
-                                  self.test_dipole.pos_sph2[2] - self.test_dipole.pos_sph[1],self._log)
+        
+        # Calculate source-dipole electric field in the primary spherical coordinate
+        electric_dipole_field = self.source_dipole_electric_field()
         # Calculate source coefficients
-        p, q = self._dipole_source_coefficient()
-        p, q = p[:,:,np.newaxis], q[:,:,np.newaxis]
+        try:
+            p = self.speed_up['p']
+            q = self.speed_up['q']
+        except:
+            p, q = self._source_dipole_coefficient()
+            p, q = p[:,:,np.newaxis], q[:,:,np.newaxis]
         # Find the region in which the test dipole is located
         ind = find_r_region(self.boundary_radius, self.test_dipole.pos_sph[0])
         if ind == 0:
             # Calculate Mie coefficients
-            alpha, beta = self._mie_coefficient()[:2]
-            alpha, beta = alpha[:,:,np.newaxis], beta[:,:,np.newaxis]
+            try:
+                alpha = self.speed_up['alpha']
+                beta  = self.speed_up['beta']
+            except:
+                alpha, beta = self._mie_coefficient()[:2]
+                alpha, beta = alpha[:,:,np.newaxis], beta[:,:,np.newaxis]
             # Calculate vector spherical function at the test dipole position
             M_test, N_test = self._vector_spherical_function('test', '3')
             # Scattering electric field
@@ -175,14 +266,18 @@ class MiePy(object):
             electric_field = electric_dipole_field + E_N + E_M
         elif ind == 1: # temporary for single sphere only
             # Calculate source coefficient
-            gamma, delta = self._mie_coefficient()[2:]
-            gamma, delta = gamma[:,:,np.newaxis], delta[:,:,np.newaxis]
+            try:
+                gamma = self.speed_up['gamma']
+                delta = self.speed_up['delta']
+            except:
+                gamma, delta = self._mie_coefficient()[2:]
+                gamma, delta = gamma[:,:,np.newaxis], delta[:,:,np.newaxis]
             M_test, N_test = self._vector_spherical_function('test', '1')
             # Scattering electric field
             E_N = np.einsum('ijk->k', p * delta * N_test).reshape([3,1])
             E_M = np.einsum('ijk->k', q * gamma * M_test).reshape([3,1])
             # Total Electric field
-            electric_field = electric_dipole_field + E_N + E_M 
+            electric_field = E_N + E_M 
 
         return electric_field
         
@@ -190,6 +285,8 @@ class MiePy(object):
         """_vector_spherical_function
 
         Args:
+            dipole_type (str): Type of dipole ('source' or 'test')
+            function_type (str): Type of function ('1' or '3') 
             self.expansion_order (np.int16): Expansion order of the vector spherical functions
             self.source_dipole.pos_sph (ndarray[np.float64] 1x3): Position of the source dipole (spherical coordiante)
             self.source_dipole.region (np.int16): Index of the region where the source dipole is located
@@ -209,31 +306,52 @@ class MiePy(object):
         if dipole_type == 'source':
             r, theta, phi = self.source_dipole.pos_sph
             # Calculate normalized Tau, Pi and P angular functions
-            NPi, NTau, NP = bf.normTauPiP(theta, n_max, 'reversed', self._log)
+            try:
+                NPi = self.speed_up['NPi_s']
+                NTau = self.speed_up['NTau_s']
+                NP = self.speed_up['NP_s']
+            except:
+                NPi, NTau, NP = bf.normTauPiP(theta, n_max, 'reversed', self._log)
             # Calculate azimuthal function
-            azi_func = bf.exp_imphi(phi, n_max, 'reversed',self._log)
+            try:
+                azi_func = self.speed_up['azi_func_s']
+            except:
+                azi_func = bf.exp_imphi(phi, n_max, 'reversed',self._log)
             # Define a dimensionless radial variable
             kr = self.ni[self.source_dipole.region] * self.k0 * r
         elif dipole_type == 'test':
             r, theta, phi = self.test_dipole.pos_sph
             # Calculate normalized Tau, Pi and P angular functions
-            NPi, NTau, NP = bf.normTauPiP(theta, n_max, 'normal', self._log)
+            try:
+                NPi = self.speed_up['NPi_t']
+                NTau = self.speed_up['NTau_t']
+                NP = self.speed_up['NP_t']
+            except:
+                NPi, NTau, NP = bf.normTauPiP(theta, n_max, 'normal', self._log)
             # Calculate azimuthal function
-            azi_func = bf.exp_imphi(phi, n_max, 'normal',self._log)
+            try:
+                azi_func = self.speed_up['azi_func_t']
+            except:
+                azi_func = bf.exp_imphi(phi, n_max, 'normal',self._log)
             # Define a dimensionless radial variable
-            kr = self.ni[self.source_dipole.region] * self.k0 * r
+            ind = find_r_region(self.boundary_radius, self.test_dipole.pos_sph[0])
+            kr = self.ni[ind] * self.k0 * r
 
         # Preallocation
         M = np.zeros([n_max,2*n_max+1,3],dtype=np.complex128)
         N = np.zeros([n_max,2*n_max+1,3],dtype=np.complex128)
 
         # Radial function
-        if function_type == '1':
-            z = bf.spherical_bessel_function_1(kr, n_max, self._log)
-            raddz = bf.riccati_bessel_function_S(kr, n_max, self._log)[1] / kr
-        elif function_type == '3':
-            z = bf.spherical_hankel_function_1(kr, n_max, self._log)
-            raddz = bf.riccati_bessel_function_xi(kr, n_max, self._log)[1] / kr
+        if dipole_type == 'test' and ('z' and 'raddz' in self.speed_up):
+            z = self.speed_up['z_t']
+            raddz = self.speed_up['raddz_t']
+        else:
+            if function_type == '1':
+                z = bf.spherical_bessel_function_1(kr, n_max, self._log)
+                raddz = bf.riccati_bessel_function_S(kr, n_max, self._log)[1] / kr
+            elif function_type == '3':
+                z = bf.spherical_hankel_function_1(kr, n_max, self._log)
+                raddz = bf.riccati_bessel_function_xi(kr, n_max, self._log)[1] / kr
         
         # Exclude the zeroth-order spherical Bessel (Hankel) function
         z = z[1:]
@@ -261,8 +379,8 @@ class MiePy(object):
 
         return M, N
 
-    def _dipole_source_coefficient(self):
-        """_dipole_source_coefficient
+    def _source_dipole_coefficient(self):
+        """_source_dipole_coefficient
 
         Args:
             self.ni (ndarray[np.complex128] 1xm): Complex refractive indices in each region (m = 2, 3)
@@ -308,8 +426,8 @@ class MiePy(object):
             q = prefactor*np.einsum('ijk,k->ij',M3,self.source_dipole.ori_sph)
             return p, q, r, s
 
-    def _dipole_source_electric_field(self):
-        """_dipole_source_electric_field
+    def _source_dipole_electric_field(self):
+        """_source_dipole_electric_field
 
         Args:
             self.test_dipole.pos_sph2 (ndarray[np.float64] 1x3): Position of the test dipole in the secondary spherical coordinate
@@ -483,4 +601,4 @@ if __name__ == '__main__':
 
     
     ind = find_r_region(np.array([70]), 90)
-    print(ind)
+    #print(ind)
