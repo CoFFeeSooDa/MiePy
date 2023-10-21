@@ -280,6 +280,94 @@ class MiePy(object):
             electric_field = E_N + E_M 
 
         return electric_field
+    
+    def dyadic_greens_function_scattering(self):
+        """dyadic_greens_function_scattering
+        Args:
+            self.expansion_order (np.int16): Expansion order of the vector spherical functions
+            self.source_dipole.pos_sph (ndarray[np.float64] 1x3): Position of the source dipole (spherical coordiante)
+            self.source_dipole.region (np.int16): Index of the region where the source dipole is located
+            self.k0 (np.float64): Wavenumber in vacuum
+            self.ni (ndarray[np.complex128] 1xm): Complex refractive indices in each region (m = 2, 3)
+            log_message (object): Object of logging standard module (for the use of MiePy logging only)
+
+        Methods:
+            self._mie_coefficient (tuple): Mie coefficients (alpha, beta, gamma and delta)
+            self._vector_spherical_function (tuple): 
+                Calculate normalized vector spherical functions (M and N)
+                For Source Dipole Moiety:
+                    self._vector_spherical_function(dipole_type='source', function_type='3')
+                For Test Dipole Moiety:
+                    ind = 0: self._vector_spherical_function(dipole_type='test', function_type='3')
+                    ind = 1: self._vector_spherical_function(dipole_type='test', function_type='1')
+                Returns:
+                    Tuple: Normalized M and N functions
+                        M (ndarray[float], n x (2n+1) x 3): vector spherical function M
+                        N (ndarray[float], n x (2n+1) x 3): vector spherical function N
+                        
+        Returns:
+            GF_scat(ndarray[complex], 3 x 3): scattering dyadic Green's Function for a certain frequency
+            
+        Note:
+            How to obtain scattering electric field for a certain frequency using GF_scat?
+            
+            prefactor = 4 * np.pi * k**2
+            electric_field_scat = prefactor
+                                * np.einsum('ij, j -> i', GF_scat, self.source_dipole.ori_sph)
+        """
+        # Preliminaries: Variables from MiePy object
+        ## Wavenumber in the dielectric medium
+        k = self.ni[self.source_dipole.region] * self.k0
+        ## Prefactor (for electric field, cgs but cm -> m)
+        prefactor = 1j * k
+        
+        # Source Dipole Moiety
+        # Calculate vector spherical function at the source dipole position
+        M_source, N_source = self._vector_spherical_function(dipole_type='source', function_type='3')
+        #Dim: Axis: (0, 1, 2) = (n, -m(total 2n+1), 3)
+        
+        # Test Dipole Moiety
+        # Find the region in which the test dipole is located
+        ind = find_r_region(self.boundary_radius, self.test_dipole.pos_sph[0])
+        if ind == 0:
+            # Calculate Mie coefficients
+            try:
+                alpha = self.speed_up['alpha']
+                beta  = self.speed_up['beta']
+            except:
+                alpha, beta = self._mie_coefficient()[:2]
+                #Dim: Axis: (0, 1) = (n, 1)
+                alpha = alpha[:, 0] #Dim: Axis: (0) = (n), same effect as np.ravel()
+                beta = beta[:, 0] #Dim: Axis: (0) = (n), same effect as np.ravel() 
+            # Calculate vector spherical function at the test dipole position
+            M_test, N_test = self._vector_spherical_function('test', '3')
+            #Dim: Axis: (0, 1, 2) = (n, m(total 2n+1), 3)
+            GF_scat_N = prefactor * np.einsum('n, nmk, nml -> kl', alpha, N_test, N_source)
+            #Dim: Axis: (0, 1) = (3, 3)
+            GF_scat_M = prefactor * np.einsum('n, nmk, nml -> kl', beta, M_test, M_source)
+            #Dim: Axis: (0, 1) = (3, 3)
+            GF_scat = GF_scat_N + GF_scat_M
+            
+        elif ind == 1: # temporary for single sphere only
+            # Calculate source coefficient
+            try:
+                gamma = self.speed_up['gamma']
+                delta = self.speed_up['delta']
+            except:
+                gamma, delta = self._mie_coefficient()[2:]
+                #Dim: Axis: (0, 1) = (n, 1)
+                gamma = gamma[:, 0] #Dim: Axis: (0) = (n), same effect as np.ravel()
+                delta = delta[:, 0] #Dim: Axis: (0) = (n), same effect as np.ravel()
+            # Calculate vector spherical function at the test dipole position
+            M_test, N_test = self._vector_spherical_function('test', '1')
+            #Dim: Axis: (0, 1, 2) = (n, m(total 2n+1), 3)
+            GF_scat_N = prefactor * np.einsum('n, nmk, nml -> kl', delta, N_test, N_source)
+            #Dim: Axis: (0, 1) = (3, 3)
+            GF_scat_M = prefactor * np.einsum('n, nmk, nml -> kl', gamma, M_test, M_source)
+            #Dim: Axis: (0, 1) = (3, 3)
+            GF_scat = GF_scat_N + GF_scat_M
+        
+        return GF_scat
         
     def _vector_spherical_function(self, dipole_type: str, function_type: str):
         """_vector_spherical_function
