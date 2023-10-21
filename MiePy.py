@@ -256,9 +256,13 @@ class MiePy(object):
                 beta  = self.speed_up['beta']
             except:
                 alpha, beta = self._mie_coefficient()[:2]
+                print('Efield_alpha', alpha)
+                print('Efield_beta', beta)
                 alpha, beta = alpha[:,:,np.newaxis], beta[:,:,np.newaxis]
             # Calculate vector spherical function at the test dipole position
             M_test, N_test = self._vector_spherical_function('test', '3')
+            print('Efield_M\n', M_test)
+            print('Efield_N\n', N_test)
             # Scattering electric field
             E_N = np.einsum('ijk->k', p * alpha * N_test).reshape([3,1])
             E_M = np.einsum('ijk->k', q * beta  * M_test).reshape([3,1])
@@ -280,6 +284,88 @@ class MiePy(object):
             electric_field = E_N + E_M 
 
         return electric_field
+    
+    def dyadic_greens_function_scattering(self):
+        # Preliminaries: Variables from MiePy object
+        # Wavenumber in the dielectric medium
+        k = self.ni[self.source_dipole.region] * self.k0
+        # Prefactor (for electric field, cgs but cm -> m)
+        prefactor = 1j * k
+        
+        # Source Dipole Moiety
+        # Calculate vector spherical function at the source dipole position
+        M_source, N_source = self._vector_spherical_function(dipole_type='source', function_type='3')
+        #Dim: Axis: (0, 1, 2) = (n, -m(total 2n+1), 3)
+        print('dyad_M_source\n', M_source)
+        print('dyad_N_source\n', N_source)
+        # M_source = M_source[:, :, np.newaxis, :]
+        # N_source = N_source[:, :, np.newaxis, :]
+        
+        
+        # Test Dipole Moiety
+        # Find the region in which the test dipole is located
+        ind = find_r_region(self.boundary_radius, self.test_dipole.pos_sph[0])
+        if ind == 0:
+            # Calculate Mie coefficients
+            try:
+                alpha = self.speed_up['alpha']
+                beta  = self.speed_up['beta']
+            except:
+                alpha, beta = self._mie_coefficient()[:2]
+                #Dim: Axis: (0, 1) = (n, 1)
+                print('dyad_alpha', alpha)
+                print('dyad_beta', beta)
+                alpha = np.ravel(alpha)
+                beta = np.ravel(beta)
+                #Dim: Axis: (0) = (n)
+                
+                # alpha = alpha[:,:,np.newaxis,np.newaxis]
+                # beta = beta[:,:,np.newaxis, np.newaxis]
+                #Dim: Axis: (0, 1, 2, 3) = (n, 1, NewAxis, NewAxis)
+                
+            # Calculate vector spherical function at the test dipole position
+            M_test, N_test = self._vector_spherical_function('test', '3')
+            #Dim: Axis: (0, 1, 2) = (n, m(total 2n+1), 3)
+            print('dyad_M\n', M_test)
+            print('dyad_N\n', N_test)
+            # M_test = M_test[:, :, :, np.newaxis]
+            # N_test = N_test[:, :, :, np.newaxis]
+            
+            # GF_scat_N = prefactor * np.einsum('n, nmk, nml -> kl', alpha, N_test, N_source)
+            #Dim: Axis: (0, 1) = (3, 3)
+            # GF_scat_M = prefactor * np.einsum('n, nmk, nml -> kl', beta, M_test, M_source)
+            #Dim: Axis: (0, 1) = (3, 3)
+            
+            GF_scat_N = prefactor * np.einsum('nmkl -> kl', alpha * N_test * N_source).reshape([3,3])
+            GF_scat_M = prefactor * np.einsum('nmkl -> kl', beta * M_test * M_source).reshape([3,3])
+            GF_scat = GF_scat_N + GF_scat_M
+            
+        # elif ind == 1: # temporary for single sphere only
+        #     # Calculate source coefficient
+        #     try:
+        #         gamma = self.speed_up['gamma']
+        #         delta = self.speed_up['delta']
+        #     except:
+        #         gamma, delta = self._mie_coefficient()[2:]
+        #         #Dim: Axis: (0, 1) = (n, 1)
+                
+        #         gamma = np.ravel(gamma)
+        #         delta = np.ravel(delta)
+        #         #Dim: Axis: (0) = (n)
+        #         # gamma, delta = gamma[:,:,np.newaxis], delta[:,:,np.newaxis] 
+        #         #Dim: Axis: (0, 1, 2) = (n, 1, NewAxis)
+            
+        #     # Calculate vector spherical function at the test dipole position
+        #     M_test, N_test = self._vector_spherical_function('test', '1')
+        #     #Dim: Axis: (0, 1, 2) = (n, m(total 2n+1), 3)
+            
+        #     GF_scat_N = prefactor * np.einsum('n, nmk, nml -> kl', delta, N_test, N_source)
+        #     #Dim: Axis: (0, 1) = (3, 3)
+        #     GF_scat_M = prefactor * np.einsum('n, nmk, nml -> kl', gamma, M_test, M_source)
+        #     #Dim: Axis: (0, 1) = (3, 3)
+        #     GF_scat = GF_scat_N + GF_scat_M
+        
+        return GF_scat
         
     def _vector_spherical_function(self, dipole_type: str, function_type: str):
         """_vector_spherical_function
@@ -409,8 +495,11 @@ class MiePy(object):
         # Calculate M and N fields based on the location of the source dipole
         if self.source_dipole.region == 0:
             M, N = self._vector_spherical_function(dipole_type='source', function_type='3')
+            print('Efield_M_source\n', np.shape(M))
+            print('Efield_N_source\n', N)
             p = prefactor*np.einsum('ijk,k->ij',N,self.source_dipole.ori_sph)
             q = prefactor*np.einsum('ijk,k->ij',M,self.source_dipole.ori_sph)
+            print('Efield_ori\n', self.source_dipole.ori_sph)
             return p, q
         elif self.source_dipole.region == self.ni.size-1:
             M, N = self._vector_spherical_function(self, dipole_type='source', function_type='1')
