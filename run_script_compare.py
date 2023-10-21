@@ -26,7 +26,7 @@ MP = MiePy.MiePy(calc)
 
 # Main loop
 if settings['ModeName'] == 'wavelength':
-    sample_pt = 30
+    sample_pt = 401
     # Preallocation
     electric_field = np.zeros([sample_pt, 3], dtype=np.complex128)
     wavelength = np.zeros(sample_pt, dtype=np.float64)
@@ -45,15 +45,14 @@ if settings['ModeName'] == 'wavelength':
         electric_field[ii:ii+1,:] = np.ravel(MP.total_electric_field())
         electric_field_source[ii:ii+1,:] = np.ravel(MP.source_dipole_electric_field())
         GF_scat[ii, :, :] = MP.dyadic_greens_function_scattering()
-        
+        # Wavenumber in the dielectric medium
+        k[ii] = MP.ni[MP.source_dipole.region] * MP.k0
+    
     # Obtain scattering electric field
-    # Wavenumber in the dielectric medium
-    k[ii] = MP.ni[MP.source_dipole.region] * MP.k0
     # Prefactor (for electric field, cgs but cm -> m)
     prefactor = 4 * np.pi * k**2
     prefactor = prefactor[:, np.newaxis]
     electric_field_scat = prefactor * np.einsum('ijk, k-> ij', GF_scat, MP.source_dipole.ori_sph)
-    print(MP.source_dipole.ori_sph)
     electric_field -= electric_field_source
     electric_field_compare = electric_field_scat
 # mat_dict = {"CF":CF}
@@ -67,13 +66,20 @@ MP.output_elapsed_time(end_time - start_time)
 
 if __name__ == "__main__":
     wavelength *= 1e9
-    # plt.plot(wavelength, np.real(electric_field_source[:, 0]), label='Re_E_x_source')
     plt.plot(wavelength, np.real(electric_field[:, 0]), label='Re_E_x')
     # plt.plot(wavelength, np.real(electric_field[:, 1]), label='Re_E_y')
     # plt.plot(wavelength, np.real(electric_field[:, 2]), label='Re_E_z')
+    
     plt.plot(wavelength, np.real(electric_field_compare[:, 0]), label='Re_E_compare_x', linestyle='--')
     # plt.plot(wavelength, np.real(electric_field_compare[:, 1]), label='Re_E_compare_y', linestyle='--')
     # plt.plot(wavelength, np.real(electric_field_compare[:, 2]), label='Re_E_compare_z', linestyle='--')
+    
+    # plt.plot(wavelength, (np.real(electric_field[:, 0]) - np.real(electric_field_compare[:, 0])) / np.real(electric_field[:, 0]),\
+    #          label='Re_E_x_relative_diff', linestyle='-')
+    # plt.plot(wavelength, (np.real(electric_field[:, 1]) - np.real(electric_field_compare[:, 1])) / np.real(electric_field[:, 1]),\
+    #          label='Re_E_y_relative_diff', linestyle='-')
+    # plt.plot(wavelength, (np.real(electric_field[:, 2]) - np.real(electric_field_compare[:, 2])) / np.real(electric_field[:, 2]),\
+    #          label='Re_E_z_relative_diff', linestyle='-')
     plt.legend()
     plt.show()
     

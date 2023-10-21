@@ -9,7 +9,7 @@
 		  "Pos_Cart"   		: [0, 0, -80e-9],
 		  "Ori_Cart"   		: [0, 0, 1]
 	  },
-	  "ExpansionOrder" 		: 3,
+	  "ExpansionOrder" 		: 70,
 	  "BoundaryCondition"	: "single",
 	  "BoundaryRadius" 		: [60e-9],
 	  "Dpstrength"     		: 1,
