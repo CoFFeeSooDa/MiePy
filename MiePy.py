@@ -614,7 +614,10 @@ class MiePy(object):
             
             return alpha0, beta0, alpha1, beta1, gamma1, delta1, gamma2, delta2
         
-
+    def _imag_dyadic_greens_function_single_0(self):
+        
+        ImGF_0 = 6 * np.pi * np.eyes(3) / self.k0
+        return ImGF_0
 
 
 class Dipole(object):
