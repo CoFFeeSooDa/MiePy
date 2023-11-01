@@ -369,6 +369,26 @@ class MiePy(object):
         
         return GF_scat
         
+    def purcell(self):
+        
+        if (self.source_dipole.pos_cart == self.test_dipole.pos_cart).all():
+            ImGF_scat = np.imag(self.dyadic_greens_function_scattering())
+            mu_dot_ImGF_dot_mu = self.source_dipole.ori_sph @\
+                                 ImGF_scat @\
+                                 self.source_dipole.ori_sph
+            purcell_factor = (6 * np.pi * mu_dot_ImGF_dot_mu / self.k0)
+            purcell_factor += 1
+            return purcell_factor
+        else:
+            print(self.source_dipole.pos_cart)
+            print(self.test_dipole.pos_cart)
+            self._log.error('Purcell Factor can ' +\
+                            tc.str_red('NOT') +\
+                            ' be calculated with two point Green\'s functions.')
+            return None
+        
+           
+        
     def _vector_spherical_function(self, dipole_type: str, function_type: str):
         """_vector_spherical_function
 
@@ -614,7 +634,10 @@ class MiePy(object):
             
             return alpha0, beta0, alpha1, beta1, gamma1, delta1, gamma2, delta2
         
-
+    def _imag_dyadic_greens_function_single_0_cart(self):
+        
+        ImGF_0_cart = (self.k0 / 6 * np.pi) * np.eyes(3)
+        return ImGF_0_cart
 
 
 class Dipole(object):
@@ -688,5 +711,11 @@ if __name__ == '__main__':
     #MP.display_attribute()
 
     
-    ind = find_r_region(np.array([70]), 90)
+    # ind = find_r_region(np.array([70]), 90)
     #print(ind)
+    a = [1, 2, 3]
+    b = [1., 2., 3.]
+    G = np.array([[1, 2, 3],
+                  [1, 2, 3],
+                  [1, 2, 3]])
+    print(a @ G)
