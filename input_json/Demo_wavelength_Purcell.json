@@ -6,7 +6,7 @@
 		  "Ori_Cart"   		: [0, 0, 1]
 	  },
 	  "TestDipole"     		: {
-		  "Pos_Cart"   		: [0, 0, -80e-9],
+		  "Pos_Cart"   		: [0, 0, 80e-9],
 		  "Ori_Cart"   		: [0, 0, 1]
 	  },
 	  "ExpansionOrder" 		: 70,

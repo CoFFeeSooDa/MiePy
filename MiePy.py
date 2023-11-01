@@ -378,8 +378,10 @@ class MiePy(object):
                                  self.source_dipole.ori_sph
             purcell_factor = (6 * np.pi * mu_dot_ImGF_dot_mu / self.k0)
             purcell_factor += 1
-            return purcell_factor 
+            return purcell_factor
         else:
+            print(self.source_dipole.pos_cart)
+            print(self.test_dipole.pos_cart)
             self._log.error('Purcell Factor can ' +\
                             tc.str_red('NOT') +\
                             ' be calculated with two point Green\'s functions.')

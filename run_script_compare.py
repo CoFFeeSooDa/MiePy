@@ -5,9 +5,10 @@ import MiePy
 import scipy
 import time
 import matplotlib.pyplot as plt
+from scipy.io import loadmat
 
 # Path of input file
-json_path = './input_json/Demo_wavelength_GScat.json'
+json_path = './input_json/Demo_wavelength_Purcell.json'
 
 # Read from json file
 inputs = util.read_settings_json(json_path)
@@ -28,12 +29,13 @@ MP = MiePy.MiePy(calc)
 if settings['ModeName'] == 'wavelength':
     sample_pt = 401
     # Preallocation
-    electric_field = np.zeros([sample_pt, 3], dtype=np.complex128)
     wavelength = np.zeros(sample_pt, dtype=np.float64)
     k = np.zeros(sample_pt, dtype=np.complex128)
-    electric_field_compare = np.zeros([sample_pt, 3], dtype=np.complex128)
-    electric_field_source = np.zeros([sample_pt, 3], dtype=np.complex128)
-    GF_scat = np.zeros([sample_pt, 3, 3], dtype=np.complex128)
+    # electric_field = np.zeros([sample_pt, 3], dtype=np.complex128)
+    # electric_field_compare = np.zeros([sample_pt, 3], dtype=np.complex128)
+    # electric_field_source = np.zeros([sample_pt, 3], dtype=np.complex128)
+    # GF_scat = np.zeros([sample_pt, 3, 3], dtype=np.complex128)
+    purcell_factor = np.zeros(sample_pt, dtype=np.float64)
     
     for ii in range(sample_pt):    
         calc['wavelength'] = (settings['wavelength'])[ii]
@@ -42,19 +44,22 @@ if settings['ModeName'] == 'wavelength':
         calc['k0br'] = (settings['k0br'])[ii]
         MP.refresh(calc)
         wavelength[ii] = calc['wavelength']
-        electric_field[ii:ii+1,:] = np.ravel(MP.total_electric_field())
-        electric_field_source[ii:ii+1,:] = np.ravel(MP.source_dipole_electric_field())
-        GF_scat[ii, :, :] = MP.dyadic_greens_function_scattering()
+        # Green's Function Compare
+        # electric_field[ii:ii+1,:] = np.ravel(MP.total_electric_field())
+        # electric_field_source[ii:ii+1,:] = np.ravel(MP.source_dipole_electric_field())
+        # GF_scat[ii, :, :] = MP.dyadic_greens_function_scattering()
         # Wavenumber in the dielectric medium
-        k[ii] = MP.ni[MP.source_dipole.region] * MP.k0
+        # k[ii] = MP.ni[MP.source_dipole.region] * MP.k0
+        # Purcell Factor
+        purcell_factor[ii] = MP.purcell()
     
     # Obtain scattering electric field
     # Prefactor (for electric field, cgs but cm -> m)
-    prefactor = 4 * np.pi * k**2
-    prefactor = prefactor[:, np.newaxis]
-    electric_field_scat = prefactor * np.einsum('ijk, k-> ij', GF_scat, MP.source_dipole.ori_sph)
-    electric_field -= electric_field_source
-    electric_field_compare = electric_field_scat
+    # prefactor = 4 * np.pi * k**2
+    # prefactor = prefactor[:, np.newaxis]
+    # electric_field_scat = prefactor * np.einsum('ijk, k-> ij', GF_scat, MP.source_dipole.ori_sph)
+    # electric_field -= electric_field_source
+    # electric_field_compare = electric_field_scat
 # mat_dict = {"CF":CF}
 # scipy.io.savemat('test.mat',mat_dict)
 
@@ -65,12 +70,13 @@ end_time = time.time()
 MP.output_elapsed_time(end_time - start_time)
 
 if __name__ == "__main__":
-    wavelength *= 1e9
-    plt.plot(wavelength, np.real(electric_field[:, 0]), label='Re_E_x')
+    # Wavelength Mode Test
+    # wavelength *= 1e9
+    # plt.plot(wavelength, np.real(electric_field[:, 0]), label='Re_E_x')
     # plt.plot(wavelength, np.real(electric_field[:, 1]), label='Re_E_y')
     # plt.plot(wavelength, np.real(electric_field[:, 2]), label='Re_E_z')
     
-    plt.plot(wavelength, np.real(electric_field_compare[:, 0]), label='Re_E_compare_x', linestyle='--')
+    # plt.plot(wavelength, np.real(electric_field_compare[:, 0]), label='Re_E_compare_x', linestyle='--')
     # plt.plot(wavelength, np.real(electric_field_compare[:, 1]), label='Re_E_compare_y', linestyle='--')
     # plt.plot(wavelength, np.real(electric_field_compare[:, 2]), label='Re_E_compare_z', linestyle='--')
     
@@ -80,8 +86,19 @@ if __name__ == "__main__":
     #          label='Re_E_y_relative_diff', linestyle='-')
     # plt.plot(wavelength, (np.real(electric_field[:, 2]) - np.real(electric_field_compare[:, 2])) / np.real(electric_field[:, 2]),\
     #          label='Re_E_z_relative_diff', linestyle='-')
-    plt.legend()
-    plt.show()
+    # plt.plot(wavelength, (np.imag(electric_field[:, 0]) - np.imag(electric_field_compare[:, 0])) / np.imag(electric_field[:, 0]),\
+    #          label='Im_E_x_relative_diff', linestyle='-')
+    # plt.plot(wavelength, (np.imag(electric_field[:, 1]) - np.imag(electric_field_compare[:, 1])) / np.imag(electric_field[:, 1]),\
+    #          label='Im_E_y_relative_diff', linestyle='-')
+    # plt.plot(wavelength, (np.imag(electric_field[:, 2]) - np.imag(electric_field_compare[:, 2])) / np.imag(electric_field[:, 2]),\
+    #          label='Im_E_z_relative_diff', linestyle='-')
+    # plt.rcParams['savefig.dpi'] = 1000 #圖片像素
+    # plt.rcParams['figure.dpi'] = 1000 #分辨率
+    # plt.title("Scattering Green's Function Difference $\\overline{\\overline{\\mathbf{G}}}_{\\mathrm{scat}}$")
+    # plt.xlabel("Wavelength ($\\mathrm{nm}$)")
+    # plt.ylabel("Rel. Difference in $\\overline{\\overline{\\mathbf{G}}}_{\\mathrm{scat}}$")
+    # plt.legend()
+    # plt.show()
     
     # plt.plot(wavelength, np.imag(electric_field[:, 0]), label='Im_E_x')
     # plt.plot(wavelength, np.imag(electric_field[:, 1]), label='Im_E_y')
@@ -91,4 +108,23 @@ if __name__ == "__main__":
     # plt.plot(wavelength, np.imag(electric_field_compare[:, 2]), label='Im_E_compare_z', linestyle='--')
     # plt.legend()
     # plt.show()
-    # pass
+    
+    # Purcell Factor test
+    # matlab_purcell = loadmat("C:/Users/User/Desktop/Code/MieDipole/result_purcell.mat")['result_purcell']
+    # wavelength *= 1e9
+    # plt.plot(matlab_purcell[0] * 1e9, matlab_purcell[1], label = 'Matlab')
+    # plt.plot(wavelength, purcell_factor, '--', label = 'Python')
+    # plt.legend()
+    # plt.show()
+    # Difference
+    matlab_purcell = loadmat("C:/Users/User/Desktop/Code/MieDipole/result_purcell.mat")['result_purcell']
+    wavelength *= 1e9
+    plt.plot(wavelength, purcell_factor - matlab_purcell[1], label = 'python vs matlab')
+    plt.rcParams['savefig.dpi'] = 1000 #圖片像素
+    plt.rcParams['figure.dpi'] = 1000 #分辨率
+    plt.title("Purcell Difference $F_{\\mathrm{p}}$")
+    plt.xlabel("Wavelength ($\\mathrm{nm}$)")
+    plt.ylabel("Rel. Difference in $F_{\\mathrm{p}}$")
+    plt.legend()
+    plt.show()
+    pass
