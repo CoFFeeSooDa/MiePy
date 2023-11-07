@@ -31,11 +31,11 @@ if settings['ModeName'] == 'wavelength':
     # Preallocation
     wavelength = np.zeros(sample_pt, dtype=np.float64)
     k = np.zeros(sample_pt, dtype=np.complex128)
-    # electric_field = np.zeros([sample_pt, 3], dtype=np.complex128)
-    # electric_field_compare = np.zeros([sample_pt, 3], dtype=np.complex128)
-    # electric_field_source = np.zeros([sample_pt, 3], dtype=np.complex128)
-    # GF_scat = np.zeros([sample_pt, 3, 3], dtype=np.complex128)
-    purcell_factor = np.zeros(sample_pt, dtype=np.float64)
+    electric_field = np.zeros([sample_pt, 3], dtype=np.complex128)
+    electric_field_compare = np.zeros([sample_pt, 3], dtype=np.complex128)
+    electric_field_source = np.zeros([sample_pt, 3], dtype=np.complex128)
+    GF_scat = np.zeros([sample_pt, 3, 3], dtype=np.complex128)
+    # purcell_factor = np.zeros(sample_pt, dtype=np.float64)
     
     for ii in range(sample_pt):    
         calc['wavelength'] = (settings['wavelength'])[ii]
@@ -45,21 +45,21 @@ if settings['ModeName'] == 'wavelength':
         MP.refresh(calc)
         wavelength[ii] = calc['wavelength']
         # Green's Function Compare
-        # electric_field[ii:ii+1,:] = np.ravel(MP.total_electric_field())
-        # electric_field_source[ii:ii+1,:] = np.ravel(MP.source_dipole_electric_field())
-        # GF_scat[ii, :, :] = MP.dyadic_greens_function_scattering()
+        electric_field[ii:ii+1,:] = np.ravel(MP.total_electric_field())
+        electric_field_source[ii:ii+1,:] = np.ravel(MP.source_dipole_electric_field())
+        GF_scat[ii, :, :] = MP.dyadic_greens_function_scattering()
         # Wavenumber in the dielectric medium
-        # k[ii] = MP.ni[MP.source_dipole.region] * MP.k0
+        k[ii] = MP.ni[MP.source_dipole.region] * MP.k0
         # Purcell Factor
-        purcell_factor[ii] = MP.purcell()
+        # purcell_factor[ii] = MP.purcell()
     
     # Obtain scattering electric field
     # Prefactor (for electric field, cgs but cm -> m)
-    # prefactor = 4 * np.pi * k**2
-    # prefactor = prefactor[:, np.newaxis]
-    # electric_field_scat = prefactor * np.einsum('ijk, k-> ij', GF_scat, MP.source_dipole.ori_sph)
-    # electric_field -= electric_field_source
-    # electric_field_compare = electric_field_scat
+    prefactor = 4 * np.pi * k**2
+    prefactor = prefactor[:, np.newaxis]
+    electric_field_scat = prefactor * np.einsum('ijk, k-> ij', GF_scat, MP.source_dipole.ori_sph)
+    electric_field -= electric_field_source
+    electric_field_compare = electric_field_scat
 # mat_dict = {"CF":CF}
 # scipy.io.savemat('test.mat',mat_dict)
 
@@ -80,25 +80,25 @@ if __name__ == "__main__":
     # plt.plot(wavelength, np.real(electric_field_compare[:, 1]), label='Re_E_compare_y', linestyle='--')
     # plt.plot(wavelength, np.real(electric_field_compare[:, 2]), label='Re_E_compare_z', linestyle='--')
     
-    # plt.plot(wavelength, (np.real(electric_field[:, 0]) - np.real(electric_field_compare[:, 0])) / np.real(electric_field[:, 0]),\
-    #          label='Re_E_x_relative_diff', linestyle='-')
-    # plt.plot(wavelength, (np.real(electric_field[:, 1]) - np.real(electric_field_compare[:, 1])) / np.real(electric_field[:, 1]),\
-    #          label='Re_E_y_relative_diff', linestyle='-')
-    # plt.plot(wavelength, (np.real(electric_field[:, 2]) - np.real(electric_field_compare[:, 2])) / np.real(electric_field[:, 2]),\
-    #          label='Re_E_z_relative_diff', linestyle='-')
-    # plt.plot(wavelength, (np.imag(electric_field[:, 0]) - np.imag(electric_field_compare[:, 0])) / np.imag(electric_field[:, 0]),\
-    #          label='Im_E_x_relative_diff', linestyle='-')
-    # plt.plot(wavelength, (np.imag(electric_field[:, 1]) - np.imag(electric_field_compare[:, 1])) / np.imag(electric_field[:, 1]),\
-    #          label='Im_E_y_relative_diff', linestyle='-')
-    # plt.plot(wavelength, (np.imag(electric_field[:, 2]) - np.imag(electric_field_compare[:, 2])) / np.imag(electric_field[:, 2]),\
-    #          label='Im_E_z_relative_diff', linestyle='-')
-    # plt.rcParams['savefig.dpi'] = 1000 #圖片像素
-    # plt.rcParams['figure.dpi'] = 1000 #分辨率
-    # plt.title("Scattering Green's Function Difference $\\overline{\\overline{\\mathbf{G}}}_{\\mathrm{scat}}$")
-    # plt.xlabel("Wavelength ($\\mathrm{nm}$)")
-    # plt.ylabel("Rel. Difference in $\\overline{\\overline{\\mathbf{G}}}_{\\mathrm{scat}}$")
-    # plt.legend()
-    # plt.show()
+    plt.plot(wavelength, (np.real(electric_field[:, 0]) - np.real(electric_field_compare[:, 0])) / np.real(electric_field[:, 0]),\
+             label='Re_E_x_relative_diff', linestyle='-')
+    plt.plot(wavelength, (np.real(electric_field[:, 1]) - np.real(electric_field_compare[:, 1])) / np.real(electric_field[:, 1]),\
+             label='Re_E_y_relative_diff', linestyle='-')
+    plt.plot(wavelength, (np.real(electric_field[:, 2]) - np.real(electric_field_compare[:, 2])) / np.real(electric_field[:, 2]),\
+             label='Re_E_z_relative_diff', linestyle='-')
+    plt.plot(wavelength, (np.imag(electric_field[:, 0]) - np.imag(electric_field_compare[:, 0])) / np.imag(electric_field[:, 0]),\
+             label='Im_E_x_relative_diff', linestyle='-')
+    plt.plot(wavelength, (np.imag(electric_field[:, 1]) - np.imag(electric_field_compare[:, 1])) / np.imag(electric_field[:, 1]),\
+             label='Im_E_y_relative_diff', linestyle='-')
+    plt.plot(wavelength, (np.imag(electric_field[:, 2]) - np.imag(electric_field_compare[:, 2])) / np.imag(electric_field[:, 2]),\
+             label='Im_E_z_relative_diff', linestyle='-')
+    plt.rcParams['savefig.dpi'] = 1000 #圖片像素
+    plt.rcParams['figure.dpi'] = 1000 #分辨率
+    plt.title("Scattering Green's Function Difference $\\overline{\\overline{\\mathbf{G}}}_{\\mathrm{scat}}$")
+    plt.xlabel("Wavelength ($\\mathrm{nm}$)")
+    plt.ylabel("Rel. Difference in $\\overline{\\overline{\\mathbf{G}}}_{\\mathrm{scat}}$")
+    plt.legend()
+    plt.show()
     
     # plt.plot(wavelength, np.imag(electric_field[:, 0]), label='Im_E_x')
     # plt.plot(wavelength, np.imag(electric_field[:, 1]), label='Im_E_y')
@@ -117,14 +117,14 @@ if __name__ == "__main__":
     # plt.legend()
     # plt.show()
     # Difference
-    matlab_purcell = loadmat("C:/Users/User/Desktop/Code/MieDipole/result_purcell.mat")['result_purcell']
-    wavelength *= 1e9
-    plt.plot(wavelength, purcell_factor - matlab_purcell[1], label = 'python vs matlab')
-    plt.rcParams['savefig.dpi'] = 1000 #圖片像素
-    plt.rcParams['figure.dpi'] = 1000 #分辨率
-    plt.title("Purcell Difference $F_{\\mathrm{p}}$")
-    plt.xlabel("Wavelength ($\\mathrm{nm}$)")
-    plt.ylabel("Rel. Difference in $F_{\\mathrm{p}}$")
-    plt.legend()
-    plt.show()
+    # matlab_purcell = loadmat("C:/Users/User/Desktop/Code/MieDipole/result_purcell.mat")['result_purcell']
+    # wavelength *= 1e9
+    # plt.plot(wavelength, purcell_factor - matlab_purcell[1], label = 'python vs matlab')
+    # plt.rcParams['savefig.dpi'] = 1000 #圖片像素
+    # plt.rcParams['figure.dpi'] = 1000 #分辨率
+    # plt.title("Purcell Difference $F_{\\mathrm{p}}$")
+    # plt.xlabel("Wavelength ($\\mathrm{nm}$)")
+    # plt.ylabel("Rel. Difference in $F_{\\mathrm{p}}$")
+    # plt.legend()
+    # plt.show()
     pass
