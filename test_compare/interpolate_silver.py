@@ -100,7 +100,7 @@ def read_dielectrics_csv(csv_file_path,csv_data='refractive_index'):
     return wavelength, dielectrics
 
 def read_J_and_C_csv(csv_file_path):
-    data = np.genfromtxt(csv_filepath, delimiter=',')
+    data = np.genfromtxt(csv_file_path, delimiter=',')
     data = data[~np.isnan(data)].reshape((-1, 2))
     N = int(np.shape(data)[0])
     data = np.hstack((data[:(N//2), :], data[(N//2):, 1, np.newaxis]))
@@ -116,8 +116,9 @@ if __name__ == "__main__":
     csv_filepath = "./dielectric_data/Ag_J&C.csv"
     wavelength, epsi_csv = read_J_and_C_csv(csv_filepath)
 
-    pts = 10000
+    pts = 400
     wavelength_YiTing = np.linspace(0.1879, 1.9370, pts + 1) * 1e-6
+    wavelength_YiTing = np.linspace(300, 700, pts + 1) * 1e-9
     omega = np.reciprocal(wavelength_YiTing) * InvM2J / Q
     N = len(omega)
     epsi_YiTing = Dielectric_OMNN(N, omega)
@@ -125,7 +126,7 @@ if __name__ == "__main__":
     result[:, 0] = wavelength_YiTing
     result[:, 1] = np.real(epsi_YiTing)
     result[:, 2] = np.imag(epsi_YiTing)
-    # np.savetxt("./dielectric_data/Ag_OMNN.csv", result, delimiter=",")
+    np.savetxt("./dielectric_data/Ag_OMNN.csv", result, delimiter=",")
     # print(wavelength)
     
     # Various Interpolation Techniques
@@ -149,22 +150,22 @@ if __name__ == "__main__":
     wavelength *= 1e9
     wavelength_YiTing *= 1e9
     wavelength_interpolate *= 1e9
-    plt.plot(wavelength, np.real(epsi_csv), label="Johnson & Christy")
-    plt.plot(wavelength_YiTing, np.real(epsi_YiTing), '--', label="OMNN Model")
-    plt.plot(wavelength_interpolate, np.real(epsi_akima), '--', label="Akima Interpolation")
-    plt.plot(wavelength_interpolate, np.real(epsi_pchip), '--', label="Pchip Interpolation")
-    plt.plot(wavelength_interpolate, np.real(epsi_linear), '--', label="Linear Interpolation")
+    # plt.plot(wavelength, np.real(epsi_csv), label="Johnson & Christy")
+    # plt.plot(wavelength_YiTing, np.real(epsi_YiTing), '--', label="OMNN Model")
+    # plt.plot(wavelength_interpolate, np.real(epsi_akima), '--', label="Akima Interpolation")
+    # plt.plot(wavelength_interpolate, np.real(epsi_pchip), '--', label="Pchip Interpolation")
+    # plt.plot(wavelength_interpolate, np.real(epsi_linear), '--', label="Linear Interpolation")
     
     
-    # plt.plot(wavelength, np.imag(epsi_csv), '--', label="Johnson & Christy")
-    # plt.plot(wavelength_YiTing, np.imag(epsi_YiTing), label="OMNN Model")
-    # plt.plot(wavelength_interpolate, np.imag(epsi_akima), label="Akima Interpolation")
-    # plt.plot(wavelength_interpolate, np.imag(epsi_pchip), label="Pchip Interpolation")
-    # plt.plot(wavelength_interpolate, np.imag(epsi_linear), label="Linear Interpolation")
+    plt.plot(wavelength, np.imag(epsi_csv), label="Johnson & Christy")
+    plt.plot(wavelength_YiTing, np.imag(epsi_YiTing), '--', label="OMNN Model")
+    plt.plot(wavelength_interpolate, np.imag(epsi_akima), '--', label="Akima Interpolation")
+    plt.plot(wavelength_interpolate, np.imag(epsi_pchip), '--', label="Pchip Interpolation")
+    plt.plot(wavelength_interpolate, np.imag(epsi_linear), '--', label="Linear Interpolation")
     plt.rcParams['savefig.dpi'] = 1000 #圖片像素
     plt.rcParams['figure.dpi'] = 1000 #分辨率
-    plt.title("Real Part Dielectric Constant Re$[\\varepsilon_{r}(\\omega)]$ \n for Different Interpolation Methods")
-    # plt.title("Imaginary Part Dielectric Constant Im$[\\varepsilon_{r}(\\omega)]$ \n for Different Interpolation Methods")
+    # plt.title("Real Part Dielectric Constant Re$[\\varepsilon_{r}(\\omega)]$ \n for Different Interpolation Methods")
+    plt.title("Imaginary Part Dielectric Constant Im$[\\varepsilon_{r}(\\omega)]$ \n for Different Interpolation Methods")
     plt.xlabel("Wavelength ($\\mathrm{nm}$)")
     plt.ylabel("Dielectric Constant Difference $\\varepsilon_{r}(\\omega)$")
     plt.legend()

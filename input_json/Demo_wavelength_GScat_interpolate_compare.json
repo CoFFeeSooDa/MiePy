@@ -1,0 +1,28 @@
+{
+  "Settings" : {
+	  "ModeName"       		: "wavelength",
+	  "SourceDipole"   		: {
+		  "Pos_Cart"   		: [0, 0, 80e-9],
+		  "Ori_Cart"   		: [0, 0, 1]
+	  },
+	  "TestDipole"     		: {
+		  "Pos_Cart"   		: [0, 0, -80e-9],
+		  "Ori_Cart"   		: [0, 0, 1]
+	  },
+	  "ExpansionOrder" 		: 70,
+	  "BoundaryCondition"	: "single",
+	  "BoundaryRadius" 		: [60e-9],
+	  "Dpstrength"     		: 1,
+	  "epsi0"	       		: 1,
+	  "epsi1"	       		: "Akima",
+	  "epsi2"	       		: "Akima",
+	  "lambda_i"       		: 300e-9,
+	  "lambda_f"   	   		: 700e-9,
+	  "grid_pts"            : 1000
+    },
+  "Output"	 : {
+	  "Quantity"       		: "GScat",
+	  "MatFile"	       		: true,
+	  "DisplayFigure"		: false
+    }
+}
