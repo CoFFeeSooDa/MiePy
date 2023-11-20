@@ -41,7 +41,10 @@ def read_JnC_csv(csv_file_path):
 
     return wavelength, dielectrics
 
-def generate_dielectric_csv(inputs: dict, dielectric_type: str, N=400):
+def generate_dielectric_csv(lambda_i: float, 
+                            lambda_f: float,
+                            dielectric_type: str, 
+                            N=400):
     if dielectric_type == "JPCL":
         if N <= 400:
             csv_file_path = f"./dielectric_data/Ag_{dielectric_type}.csv"
@@ -50,8 +53,8 @@ def generate_dielectric_csv(inputs: dict, dielectric_type: str, N=400):
             print("More data points required then expected. The maximum is 400.")
             sys.exit('Error in generate_dielectric_csv.')
     else:
-        wavelength_interpolate = np.linspace(inputs['Settings']['lambda_i'],\
-            inputs['Settings']['lambda_f'], N + 1)
+        wavelength_interpolate = np.linspace(lambda_i,\
+            lambda_f, N + 1)
         wavelength, epsi_JnC = read_JnC_csv("./dielectric_data/Ag_J&C.csv")
         # elif dielectric_type == "OMNN":
         if dielectric_type == "Akima":        
@@ -104,12 +107,14 @@ def read_settings_json(json_file_path):
     if isinstance(inputs['Settings']['epsi0'], str):
         if 'grid_pts' in inputs['Settings']:
             inputs['Settings']['epsi0'] =\
-                generate_dielectric_csv(inputs,
+                generate_dielectric_csv(inputs['Settings']['lambda_i'],
+                                        inputs['Settings']['lambda_f'],
                                         inputs['Settings']['epsi0'], 
                                         N=inputs['Settings']['grid_pts'])
         else:
             inputs['Settings']['epsi0'] =\
-                generate_dielectric_csv(inputs, 
+                generate_dielectric_csv(inputs['Settings']['lambda_i'],
+                                        inputs['Settings']['lambda_f'], 
                                         inputs['Settings']['epsi0'])
         lambda0, n0 = read_dielectrics_csv(inputs['Settings']['epsi0'], csv_data='dielectric_constant')
     else:
@@ -118,12 +123,14 @@ def read_settings_json(json_file_path):
     if isinstance(inputs['Settings']['epsi1'], str):
         if 'grid_pts' in inputs['Settings']:
             inputs['Settings']['epsi1'] =\
-                generate_dielectric_csv(inputs, 
+                generate_dielectric_csv(inputs['Settings']['lambda_i'],
+                                        inputs['Settings']['lambda_f'],
                                         inputs['Settings']['epsi1'], 
                                         N=inputs['Settings']['grid_pts'])
         else:
             inputs['Settings']['epsi1'] =\
-                generate_dielectric_csv(inputs, 
+                generate_dielectric_csv(inputs['Settings']['lambda_i'],
+                                        inputs['Settings']['lambda_f'], 
                                         inputs['Settings']['epsi1'])
         lambda1, n1 = read_dielectrics_csv(inputs['Settings']['epsi1'], csv_data='dielectric_constant')
     else:
@@ -133,12 +140,14 @@ def read_settings_json(json_file_path):
         if isinstance(inputs['Settings']['epsi2'], str):
             if 'grid_pts' in inputs['Settings']:
                 inputs['Settings']['epsi2'] =\
-                    generate_dielectric_csv(inputs, 
+                    generate_dielectric_csv(inputs['Settings']['lambda_i'],
+                                            inputs['Settings']['lambda_f'],
                                             inputs['Settings']['epsi2'], 
                                             N=inputs['Settings']['grid_pts'])
             else:
                 inputs['Settings']['epsi2'] =\
-                    generate_dielectric_csv(inputs, 
+                    generate_dielectric_csv(inputs['Settings']['lambda_i'],
+                                            inputs['Settings']['lambda_f'],
                                             inputs['Settings']['epsi2'])
             lambda2, n2 = read_dielectrics_csv(inputs['Settings']['epsi2'], csv_data='dielectric_constant')
         else:
